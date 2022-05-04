@@ -1,4 +1,6 @@
-use midir::{ConnectError, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
+use thiserror::Error;
+
+use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 
 pub struct FaderPort {
     midi_name: String,
@@ -7,7 +9,7 @@ pub struct FaderPort {
 }
 
 impl FaderPort {
-    pub fn new(midi_name: &str) -> Result<Self, Error> {
+    pub fn new(midi_name: &str) -> Result<Self, FaderPortError> {
         let midi_in = MidiInput::new("gobetween_client")?; // @Fixme: Should this be exec name?
         let mut input_connection = None;
 
@@ -37,41 +39,31 @@ impl FaderPort {
 
         Ok(FaderPort {
             midi_name: midi_name.to_string(),
-            midi_input: input_connection.ok_or(Error::MidiInputPortNotFound)?,
-            midi_output: output_connection.ok_or(Error::MidiOutputPortNotFound)?,
+            midi_input: input_connection.ok_or(FaderPortError::MidiInputPortNotFound)?,
+            midi_output: output_connection.ok_or(FaderPortError::MidiOutputPortNotFound)?,
         })
     }
 }
 
-pub enum Error {
-    MidiInputConnectError(midir::ConnectError<MidiInput>),
-    MidiOutputConnectError(midir::ConnectError<MidiOutput>),
+#[derive(Error, Debug)]
+pub enum FaderPortError {
+    // Custom errors produced by us
+    #[error("Couldn't find the chosen MIDI input port")]
     MidiInputPortNotFound,
+
+    #[error("Couldn't find the chosen MIDI output port")]
     MidiOutputPortNotFound,
-    MidiInitError(midir::InitError),
-    MidiPortInfoError(midir::PortInfoError),
-}
 
-impl From<midir::ConnectError<MidiInput>> for Error {
-    fn from(e: midir::ConnectError<MidiInput>) -> Error {
-        Error::MidiInputConnectError(e)
-    }
-}
+    // Errors from midir
+    #[error("MIDI error: {0}")]
+    MidiInputConnectError(#[from] midir::ConnectError<MidiInput>),
 
-impl From<midir::ConnectError<MidiOutput>> for Error {
-    fn from(e: midir::ConnectError<MidiOutput>) -> Error {
-        Error::MidiOutputConnectError(e)
-    }
-}
+    #[error("MIDI error: {0}")]
+    MidiOutputConnectError(#[from] midir::ConnectError<MidiOutput>),
 
-impl From<midir::InitError> for Error {
-    fn from(e: midir::InitError) -> Error {
-        Error::MidiInitError(e)
-    }
-}
+    #[error("MIDI error: {0}")]
+    MidiInitError(#[from] midir::InitError),
 
-impl From<midir::PortInfoError> for Error {
-    fn from(e: midir::PortInfoError) -> Error {
-        Error::MidiPortInfoError(e)
-    }
+    #[error("MIDI error: {0}")]
+    MidiPortInfoError(#[from] midir::PortInfoError),
 }
