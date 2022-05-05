@@ -1,3 +1,5 @@
+#[macro_use]
+mod utils;
 mod faderport;
 
 use clap::Parser;

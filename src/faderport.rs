@@ -1,11 +1,13 @@
+use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use thiserror::Error;
 
-use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
-
 pub struct FaderPort {
+    // MIDI details
     midi_name: String,
     midi_input: MidiInputConnection<()>,
     midi_output: MidiOutputConnection,
+    // Fader components
+    // @Todo
 }
 
 impl FaderPort {
@@ -20,6 +22,55 @@ impl FaderPort {
                     "gobetween_port",
                     |_timestamp, msg, _data| {
                         println!("Got a MIDI message: {:?}", msg);
+
+                        // Match on the status byte
+                        match msg[0] {
+                            0x80 => {
+                                // Note on: Button pressed
+                                let button_id = msg[1];
+                                match msg[2] {
+                                    0x00 => println!("Button ID {} pressed", button_id),
+                                    0x7F => println!("Button ID {} released", button_id),
+                                    _ => eprintln!("Invalid button state: 0x{:02X}", msg[2]),
+                                }
+                            }
+
+                            0xB0 => {
+                                // Control change: Encoder increment/decrement
+                                let byte = msg[2];
+                                let sign = if byte & 0x40 > 0 { 1i8 } else { -1i8 };
+                                let magnitude = (byte & 0x3F) as i8;
+                                let delta = magnitude * sign;
+
+                                let encoder_id = msg[1];
+
+                                // if fp.onRotate[encoderRotateID] {
+                                //     fp.onRotate[encoderRotateID](delta);
+                                // }
+
+                                println!(
+                                    "Encoder ID {} increment/decrement by {}",
+                                    encoder_id, delta
+                                );
+                            }
+
+                            0xE0..=0xEF => {
+                                // Pitch wheel: Fader level changed
+                                let fader_index = msg[0] & 0x0F;
+                                let fader_value = bit14!(msg[1], msg[2]);
+
+                                // if fp.onMove[faderIndex] {
+                                //     fp.onMove[faderIndex](faderValue)
+                                // }
+
+                                println!(
+                                    "Fader index {} level changed to {}",
+                                    fader_index, fader_value
+                                );
+                            }
+
+                            _ => eprintln!("Invalid FaderPort MIDI message: {:?}", msg),
+                        }
                     },
                     (),
                 )?);
