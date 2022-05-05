@@ -2,6 +2,7 @@ use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use thiserror::Error;
 use tokio::sync::broadcast;
 
+mod button;
 mod message;
 
 use message::Message;
