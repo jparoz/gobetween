@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Button {
     // Channel strip controls
     Solo(u8),

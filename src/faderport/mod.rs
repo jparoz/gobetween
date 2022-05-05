@@ -3,6 +3,8 @@ use thiserror::Error;
 use tokio::sync::broadcast;
 
 mod button;
+mod encoder;
+mod fader;
 mod message;
 
 use message::Message;
