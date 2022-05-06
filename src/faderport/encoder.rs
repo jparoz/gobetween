@@ -17,7 +17,6 @@ impl Encoder {
         match self {
             Encoder::Pan => 0x10,
             Encoder::Big => 0x3C,
-            _ => unreachable!(),
         }
     }
 }
