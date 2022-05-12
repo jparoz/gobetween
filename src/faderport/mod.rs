@@ -2,15 +2,9 @@ use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use thiserror::Error;
 use tokio::sync::broadcast;
 
-mod button;
-mod encoder;
-mod fader;
 mod message;
 
-use button::Button;
-use encoder::Encoder;
-use fader::Fader;
-use message::Message;
+use message::{Button, Encoder, Fader, Message};
 
 pub struct FaderPort {
     // MIDI details
