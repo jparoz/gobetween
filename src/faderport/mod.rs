@@ -37,8 +37,8 @@ impl FaderPort {
                         move |_timestamp, msg, _data| {
                             // Match on the status byte
                             match msg[0] {
-                                0x90 => {
-                                    // Note on: Button pressed
+                                0x80 | 0x90 => {
+                                    // Note on/off: Button
                                     let button_id = msg[1];
                                     match msg[2] {
                                         0x00 => {
@@ -85,7 +85,7 @@ impl FaderPort {
                                     .unwrap();
                                 }
 
-                                _ => eprintln!("Invalid FaderPort MIDI message: {:X?}", msg),
+                                _ => eprintln!("Invalid FaderPort MIDI message: {:02X?}", msg),
                             }
                         },
                         (),
