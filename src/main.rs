@@ -1,6 +1,7 @@
 #[macro_use]
 mod utils;
 mod faderport;
+mod sq;
 
 use clap::Parser;
 use std::net::IpAddr;
@@ -15,7 +16,7 @@ struct Args {
     fp_name: String,
 }
 
-fn main() -> Result<(), faderport::FaderPortError> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse the command line arguments
     let args = Args::parse();
 
@@ -23,6 +24,7 @@ fn main() -> Result<(), faderport::FaderPortError> {
     let rt = Runtime::new().unwrap(); // @XXX: unwrap
     let _guard = rt.enter();
 
+    // FaderPort test code
     let faderport = faderport::FaderPort::new(&args.fp_name)?;
 
     let mut rx = faderport.subscribe();
@@ -30,12 +32,15 @@ fn main() -> Result<(), faderport::FaderPortError> {
     tokio::spawn(async move {
         loop {
             let received = rx.recv().await;
-            println!("{:04X?}", received);
+            println!("{:?}", received);
         }
     });
 
-    let mut _buf = String::new();
-    let _ = std::io::stdin().read_line(&mut _buf);
+    // SQ test code
+    let sq = sq::SQ::new(args.sq_ip)?;
+
+    // Quit the program when enter is pressed
+    let _ = std::io::stdin().read_line(&mut String::new());
 
     Ok(())
 }
