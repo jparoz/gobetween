@@ -15,7 +15,7 @@ struct Args {
     fp_name: String,
 }
 
-fn main() {
+fn main() -> Result<(), faderport::FaderPortError> {
     // Parse the command line arguments
     let args = Args::parse();
 
@@ -23,6 +23,19 @@ fn main() {
     let rt = Runtime::new().unwrap(); // @XXX: unwrap
     let _guard = rt.enter();
 
-    let faderport = faderport::FaderPort::new(&args.fp_name);
-    println!("faderport.is_ok(): {}", faderport.is_ok())
+    let faderport = faderport::FaderPort::new(&args.fp_name)?;
+
+    let mut rx = faderport.subscribe();
+
+    tokio::spawn(async move {
+        loop {
+            let received = rx.recv().await;
+            println!("{:04X?}", received);
+        }
+    });
+
+    let mut _buf = String::new();
+    let _ = std::io::stdin().read_line(&mut _buf);
+
+    Ok(())
 }
