@@ -12,25 +12,25 @@ pub struct FaderPort {
     midi_input: MidiInputConnection<()>,
     midi_output: MidiOutputConnection,
 
-    // This is the master receiver which receives FaderPort state update messages
-    rx: broadcast::Receiver<Message>,
-    // Fader components
-    // @Todo
+    // This is a clone of the sender moved to the master callback.
+    // Use faderport.subscribe() to receive FaderPort state update messages.
+    tx: broadcast::Sender<Message>,
 }
 
 impl FaderPort {
     pub fn new(midi_name: &str) -> Result<Self, FaderPortError> {
         let midi_in = MidiInput::new("gobetween_client")?; // @Fixme: Should this be exec name?
 
-        // This is a tuple of (broadcast::Receiver<Message>, MidiInputConnection<()>)
+        // This is a tuple of (broadcast::Sender<Message>, MidiInputConnection<()>)
         let mut input_connection = None;
 
         for port in midi_in.ports().iter() {
             if midi_in.port_name(port)? == midi_name {
-                let (tx, rx) = broadcast::channel(128); // @TestMe: is this the right capacity?
+                let (tx, _rx) = broadcast::channel(128); // @TestMe: is this the right capacity?
+                let cloned_tx = tx.clone();
 
                 input_connection = Some((
-                    rx,
+                    cloned_tx,
                     midi_in.connect(
                         port,
                         "gobetween_port",
@@ -117,15 +117,19 @@ impl FaderPort {
             }
         }
 
-        let (rx, midi_input) = input_connection.ok_or(FaderPortError::MidiInputPortNotFound)?;
+        let (tx, midi_input) = input_connection.ok_or(FaderPortError::MidiInputPortNotFound)?;
         let midi_output = output_connection.ok_or(FaderPortError::MidiOutputPortNotFound)?;
 
         Ok(FaderPort {
             midi_name: midi_name.to_string(),
             midi_input,
             midi_output,
-            rx,
+            tx,
         })
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<Message> {
+        self.tx.subscribe()
     }
 }
 
