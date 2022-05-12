@@ -2,7 +2,7 @@ use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use thiserror::Error;
 use tokio::sync::broadcast;
 
-mod message;
+pub mod message;
 
 use message::{Button, Encoder, Fader, Message};
 
@@ -119,6 +119,24 @@ impl FaderPort {
     pub fn subscribe(&self) -> broadcast::Receiver<Message> {
         self.tx.subscribe()
     }
+
+    pub fn update(&mut self, msg: Message) -> Result<(), FaderPortError> {
+        use Message::*;
+        match msg {
+            FaderLevel(fader, level) => {
+                let mut bytes = [0u8; 3];
+                bytes[0] = 0xE0 | fader.to_index();
+                (bytes[1], bytes[2]) = bit14!(level);
+                self.midi_output.send(&bytes)?;
+                Ok(())
+            }
+
+            // Invalid messages should never be sent
+            ButtonPressed(_) | ButtonReleased(_) | EncoderRotate(_, _) => {
+                Err(FaderPortError::InvalidUpdateMessage(msg))
+            }
+        }
+    }
 }
 
 #[derive(Error, Debug)]
@@ -129,6 +147,9 @@ pub enum FaderPortError {
 
     #[error("Couldn't find the chosen MIDI output port")]
     MidiOutputPortNotFound,
+
+    #[error("Tried to send an invalid FaderPort update message: {0:?}")]
+    InvalidUpdateMessage(Message),
 
     // Errors from midir
     #[error("MIDI error: {0}")]
@@ -142,4 +163,7 @@ pub enum FaderPortError {
 
     #[error("MIDI error: {0}")]
     MidiPortInfoError(#[from] midir::PortInfoError),
+
+    #[error("MIDI error: {0}")]
+    MidiSendError(#[from] midir::SendError),
 }

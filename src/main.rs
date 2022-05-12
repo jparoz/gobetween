@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _guard = rt.enter();
 
     // FaderPort test code
-    let faderport = faderport::FaderPort::new(&args.fp_name)?;
+    let mut faderport = faderport::FaderPort::new(&args.fp_name)?;
 
     let mut rx = faderport.subscribe();
 
@@ -35,6 +35,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{:?}", received);
         }
     });
+
+    std::thread::sleep(std::time::Duration::new(2, 0));
+
+    faderport.update(faderport::message::Message::FaderLevel(
+        faderport::message::Fader(2),
+        12345,
+    ))?;
 
     // SQ test code
     let sq = sq::SQ::new(args.sq_ip)?;

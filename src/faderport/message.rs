@@ -1,4 +1,5 @@
-#[derive(Debug, PartialEq, Eq, Clone)]
+/// Messages sent and received from the FaderPort object.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Message {
     ButtonPressed(Button),
     ButtonReleased(Button),
@@ -6,7 +7,7 @@ pub enum Message {
     EncoderRotate(Encoder, i8),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Button {
     // Channel strip controls
     Solo(u8),
@@ -368,8 +369,8 @@ impl Button {
 }
 
 /// Fader(i) where i is in (1, 16)
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Fader(u8);
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Fader(pub u8);
 
 impl Fader {
     pub fn from_index(index: u8) -> Self {
@@ -379,9 +380,13 @@ impl Fader {
             unimplemented!("invalid fader index: {}", index);
         }
     }
+
+    pub fn to_index(&self) -> u8 {
+        self.0 - 1
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Encoder {
     Pan,
     Big,
