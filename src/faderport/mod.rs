@@ -75,11 +75,11 @@ impl FaderPort {
 
                                 0xE0..=0xEF => {
                                     // Pitch wheel: Fader level changed
-                                    let fader_index = msg[0] & 0x0F;
+                                    let fader_index = msg[0] & 0x0F; // MIDI channel is fader index
                                     let fader_value = bit14!(msg[1], msg[2]);
 
                                     tx.send(Message::FaderLevel(
-                                        Fader::from_byte(fader_index),
+                                        Fader::from_index(fader_index),
                                         fader_value,
                                     ))
                                     .unwrap();
