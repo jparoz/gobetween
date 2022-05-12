@@ -60,7 +60,7 @@ impl FaderPort {
                                 0xB0 => {
                                     // Control change: Encoder increment/decrement
                                     let byte = msg[2];
-                                    let sign = if byte & 0x40 > 0 { 1i8 } else { -1i8 };
+                                    let sign = if byte & 0x40 > 0 { -1i8 } else { 1i8 };
                                     let magnitude = (byte & 0x3F) as i8;
                                     let delta = magnitude * sign;
 
