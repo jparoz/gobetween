@@ -39,7 +39,7 @@ impl FaderPort {
 
                             // Match on the status byte
                             match msg[0] {
-                                0x80 => {
+                                0x90 => {
                                     // Note on: Button pressed
                                     let button_id = msg[1];
                                     match msg[2] {
