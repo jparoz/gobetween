@@ -379,32 +379,6 @@ impl Fader {
             unimplemented!("invalid fader index: {}", index);
         }
     }
-
-    pub fn to_byte(&self) -> u8 {
-        match self {
-            Fader(1) => 0x68,
-            Fader(2) => 0x69,
-            Fader(3) => 0x6a,
-            Fader(4) => 0x6b,
-
-            Fader(5) => 0x6c,
-            Fader(6) => 0x6d,
-            Fader(7) => 0x6e,
-            Fader(8) => 0x6f,
-
-            Fader(9) => 0x70,
-            Fader(10) => 0x71,
-            Fader(11) => 0x72,
-            Fader(12) => 0x73,
-
-            Fader(13) => 0x74,
-            Fader(14) => 0x75,
-            Fader(15) => 0x76,
-            Fader(16) => 0x77,
-
-            Fader(_) => unreachable!(),
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
