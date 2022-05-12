@@ -7,6 +7,9 @@ mod encoder;
 mod fader;
 mod message;
 
+use button::Button;
+use encoder::Encoder;
+use fader::Fader;
 use message::Message;
 
 pub struct FaderPort {
@@ -37,7 +40,7 @@ impl FaderPort {
                     midi_in.connect(
                         port,
                         "gobetween_port",
-                        |_timestamp, msg, _data| {
+                        move |_timestamp, msg, _data| {
                             println!("Got a MIDI message: {:?}", msg);
 
                             // Match on the status byte
@@ -46,8 +49,18 @@ impl FaderPort {
                                     // Note on: Button pressed
                                     let button_id = msg[1];
                                     match msg[2] {
-                                        0x00 => println!("Button ID {} pressed", button_id),
-                                        0x7F => println!("Button ID {} released", button_id),
+                                        0x00 => {
+                                            tx.send(Message::ButtonPressed(Button::from_byte(
+                                                button_id,
+                                            )))
+                                            .unwrap();
+                                        }
+                                        0x7F => {
+                                            tx.send(Message::ButtonReleased(Button::from_byte(
+                                                button_id,
+                                            )))
+                                            .unwrap();
+                                        }
                                         _ => eprintln!("Invalid button state: 0x{:02X}", msg[2]),
                                     }
                                 }
@@ -61,9 +74,11 @@ impl FaderPort {
 
                                     let encoder_id = msg[1];
 
-                                    // if fp.onRotate[encoderRotateID] {
-                                    //     fp.onRotate[encoderRotateID](delta);
-                                    // }
+                                    tx.send(Message::EncoderRotate(
+                                        Encoder::from_byte(encoder_id),
+                                        delta,
+                                    ))
+                                    .unwrap();
 
                                     println!(
                                         "Encoder ID {} increment/decrement by {}",
@@ -76,9 +91,11 @@ impl FaderPort {
                                     let fader_index = msg[0] & 0x0F;
                                     let fader_value = bit14!(msg[1], msg[2]);
 
-                                    // if fp.onMove[faderIndex] {
-                                    //     fp.onMove[faderIndex](faderValue)
-                                    // }
+                                    tx.send(Message::FaderLevel(
+                                        Fader::from_byte(fader_index),
+                                        fader_value,
+                                    ))
+                                    .unwrap();
 
                                     println!(
                                         "Fader index {} level changed to {}",
