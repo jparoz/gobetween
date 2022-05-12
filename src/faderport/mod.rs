@@ -35,8 +35,6 @@ impl FaderPort {
                         port,
                         "gobetween_port",
                         move |_timestamp, msg, _data| {
-                            println!("Got a MIDI message: {:?}", msg);
-
                             // Match on the status byte
                             match msg[0] {
                                 0x90 => {
@@ -73,11 +71,6 @@ impl FaderPort {
                                         delta,
                                     ))
                                     .unwrap();
-
-                                    println!(
-                                        "Encoder ID {} increment/decrement by {}",
-                                        encoder_id, delta
-                                    );
                                 }
 
                                 0xE0..=0xEF => {
@@ -90,14 +83,9 @@ impl FaderPort {
                                         fader_value,
                                     ))
                                     .unwrap();
-
-                                    println!(
-                                        "Fader index {} level changed to {}",
-                                        fader_index, fader_value
-                                    );
                                 }
 
-                                _ => eprintln!("Invalid FaderPort MIDI message: {:?}", msg),
+                                _ => eprintln!("Invalid FaderPort MIDI message: {:X?}", msg),
                             }
                         },
                         (),
