@@ -1,10 +1,17 @@
 /// Messages sent and received from the FaderPort object.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Message {
+    // These messages are sent from the FaderPort unit, and can be received by a rx.recv() call on
+    // the receiver associated with the FaderPort object. FaderLevel can also be sent via
+    // faderport.update().
     ButtonPressed(Button),
     ButtonReleased(Button),
-    FaderLevel(Fader, u16),
     EncoderRotate(Encoder, i8),
+    FaderLevel(Fader, u16),
+
+    // These messages can be sent to the FaderPort unit via faderport.update().
+    Led(Led, LedState),
+    Rgb(Rgb, Color),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -408,3 +415,286 @@ impl Encoder {
         }
     }
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Led {
+    // Channel strip controls
+    Solo(u8),
+    Mute(u8),
+    Select(u8),
+
+    // General controls (left side)
+    Arm,
+    SoloClear,
+    MuteClear,
+    Bypass,
+    Macro,
+    Link,
+    LeftShift,
+
+    // Fader mode buttons
+    Track,
+    EditPlugins,
+    Sends,
+    Pan,
+
+    // Session navigator
+    Prev,
+    Next,
+    Channel,
+    Zoom,
+    Scroll,
+    Bank,
+    Master,
+    Click,
+    Section,
+    Marker,
+
+    // Mix management
+    Audio,
+    VI,
+    Bus,
+    Vca,
+    All,
+    RightShift,
+
+    // Automation
+    Read,
+    Write,
+    Trim,
+    Touch,
+    Latch,
+    Off,
+
+    // Transport
+    Loop,
+    Rewind,
+    FastForward,
+    Stop,
+    Play,
+    Record,
+}
+
+impl Led {
+    pub fn to_byte(&self) -> u8 {
+        use Led::*;
+
+        match self {
+            // Channel strip controls
+            // Solo
+            Solo(1) => 0x08,
+            Solo(2) => 0x09,
+            Solo(3) => 0x0a,
+            Solo(4) => 0x0b,
+
+            Solo(5) => 0x0c,
+            Solo(6) => 0x0d,
+            Solo(7) => 0x0e,
+            Solo(8) => 0x0f,
+
+            Solo(9) => 0x50,
+            Solo(10) => 0x51,
+            Solo(11) => 0x52,
+            Solo(12) => 0x58,
+
+            Solo(13) => 0x54,
+            Solo(14) => 0x55,
+            Solo(15) => 0x59,
+            Solo(16) => 0x57,
+            Solo(_) => unreachable!(),
+
+            // Mute
+            Mute(1) => 0x10,
+            Mute(2) => 0x11,
+            Mute(3) => 0x12,
+            Mute(4) => 0x13,
+
+            Mute(5) => 0x14,
+            Mute(6) => 0x15,
+            Mute(7) => 0x16,
+            Mute(8) => 0x17,
+
+            Mute(9) => 0x78,
+            Mute(10) => 0x79,
+            Mute(11) => 0x7a,
+            Mute(12) => 0x7b,
+
+            Mute(13) => 0x7c,
+            Mute(14) => 0x7d,
+            Mute(15) => 0x7e,
+            Mute(16) => 0x7f,
+            Mute(_) => unreachable!(),
+
+            // Select
+            Select(1) => 0x18,
+            Select(2) => 0x19,
+            Select(3) => 0x1a,
+            Select(4) => 0x1b,
+
+            Select(5) => 0x1c,
+            Select(6) => 0x1d,
+            Select(7) => 0x1e,
+            Select(8) => 0x1f,
+
+            Select(9) => 0x07,
+            Select(10) => 0x21,
+            Select(11) => 0x22,
+            Select(12) => 0x23,
+
+            Select(13) => 0x24,
+            Select(14) => 0x25,
+            Select(15) => 0x26,
+            Select(16) => 0x27,
+            Select(_) => unreachable!(),
+
+            // General controls (left side)
+            Arm => 0x00,
+            SoloClear => 0x01,
+            MuteClear => 0x02,
+            Bypass => 0x03,
+            Macro => 0x04,
+            Link => 0x05,
+            LeftShift => 0x06,
+
+            // Fader mode buttons
+            Track => 0x28,
+            EditPlugins => 0x2b,
+            Sends => 0x29,
+            Pan => 0x2a,
+
+            // Session navigator
+            Prev => 0x2e,
+            Next => 0x2f,
+            Channel => 0x36,
+            Zoom => 0x37,
+            Scroll => 0x38,
+            Bank => 0x39,
+            Master => 0x3a,
+            Click => 0x3b,
+            Section => 0x3c,
+            Marker => 0x3d,
+
+            // Mix management
+            Audio => 0x3e,
+            VI => 0x3f,
+            Bus => 0x40,
+            Vca => 0x41,
+            All => 0x42,
+            RightShift => 0x46,
+
+            // Automation
+            Read => 0x4a,
+            Write => 0x4b,
+            Trim => 0x4c,
+            Touch => 0x4d,
+            Latch => 0x4e,
+            Off => 0x4f,
+
+            // Transport
+            Loop => 0x56,
+            Rewind => 0x5b,
+            FastForward => 0x5c,
+            Stop => 0x5d,
+            Play => 0x5e,
+            Record => 0x5f,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum LedState {
+    On,
+    Off,
+    Flashing,
+}
+
+impl LedState {
+    pub fn to_byte(&self) -> u8 {
+        match self {
+            LedState::On => 0x00,
+            LedState::Off => 0x7F,
+            LedState::Flashing => 0x01,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Rgb {
+    // Channel strip controls
+    Select(u8),
+
+    // General controls (left side)
+    Bypass,
+    Macro,
+    Link,
+
+    // Mix management
+    Audio,
+    VI,
+    Bus,
+    Vca,
+    All,
+
+    // Automation
+    Read,
+    Write,
+    Trim,
+    Touch,
+    Latch,
+    Off,
+}
+
+impl Rgb {
+    pub fn to_byte(&self) -> u8 {
+        use Rgb::*;
+
+        match self {
+            // Channel strip controls
+            // Select
+            Select(1) => 0x18,
+            Select(2) => 0x19,
+            Select(3) => 0x1a,
+            Select(4) => 0x1b,
+
+            Select(5) => 0x1c,
+            Select(6) => 0x1d,
+            Select(7) => 0x1e,
+            Select(8) => 0x1f,
+
+            Select(9) => 0x07,
+            Select(10) => 0x21,
+            Select(11) => 0x22,
+            Select(12) => 0x23,
+
+            Select(13) => 0x24,
+            Select(14) => 0x25,
+            Select(15) => 0x26,
+            Select(16) => 0x27,
+            Select(_) => unreachable!(),
+
+            // General controls (left side)
+            Bypass => 0x03,
+            Macro => 0x04,
+            Link => 0x05,
+
+            // Mix management
+            Audio => 0x3e,
+            VI => 0x3f,
+            Bus => 0x40,
+            Vca => 0x41,
+            All => 0x42,
+
+            // Automation
+            Read => 0x4a,
+            Write => 0x4b,
+            Trim => 0x4c,
+            Touch => 0x4d,
+            Latch => 0x4e,
+            Off => 0x4f,
+        }
+    }
+}
+
+// Color(red, green, blue); only 7 bits of each component are used
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Color(pub u8, pub u8, pub u8);

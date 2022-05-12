@@ -38,9 +38,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     std::thread::sleep(std::time::Duration::new(2, 0));
 
-    faderport.update(faderport::message::Message::FaderLevel(
-        faderport::message::Fader(2),
-        12345,
+    faderport.update(faderport::message::Message::Led(
+        faderport::message::Led::Write,
+        faderport::message::LedState::Off,
     ))?;
 
     // SQ test code

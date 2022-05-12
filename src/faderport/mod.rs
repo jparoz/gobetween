@@ -131,6 +131,20 @@ impl FaderPort {
                 Ok(())
             }
 
+            Led(led, state) => {
+                self.midi_output
+                    .send(&[0x90, led.to_byte(), state.to_byte()])?;
+                Ok(())
+            }
+
+            Rgb(rgb, message::Color(r, g, b)) => {
+                let id = rgb.to_byte();
+                self.midi_output.send(&[0x91, id, r])?;
+                self.midi_output.send(&[0x92, id, g])?;
+                self.midi_output.send(&[0x93, id, b])?;
+                Ok(())
+            }
+
             // Invalid messages should never be sent
             ButtonPressed(_) | ButtonReleased(_) | EncoderRotate(_, _) => {
                 Err(FaderPortError::InvalidUpdateMessage(msg))
