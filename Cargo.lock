@@ -160,6 +160,7 @@ dependencies = [
 name = "gobetween"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "clap",
  "midir",
  "thiserror",
