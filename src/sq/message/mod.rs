@@ -6,9 +6,6 @@ pub use id::ID;
 /// Messages sent and received from the SQ object.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Message {
-    // @Todo: this shouldn't need to have an ID, but it should be a higher-level object like Fader
-    // or Channel or something
-    // Level(ID, u16),
     Level(Source, Target, ValueState),
     Mute(Source, ButtonState),
     Pan(Source, Target, ValueState),
@@ -16,6 +13,7 @@ pub enum Message {
 }
 
 impl Message {
+    /// Makes a MIDI NRPN message from the given SQ Message.
     pub(super) fn to_nrpn(&self) -> Nrpn {
         use Message::*;
         match self {
@@ -94,6 +92,7 @@ impl Message {
                     _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
                 }
             }
+
             Increment(id) => {
                 let ID(msb, _lsb) = id;
 
@@ -116,6 +115,7 @@ impl Message {
                     _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
                 }
             }
+
             Decrement(id) => {
                 let ID(msb, _lsb) = id;
 
@@ -138,6 +138,7 @@ impl Message {
                     _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
                 }
             }
+
             Get(id) => {
                 let ID(msb, _lsb) = id;
 
@@ -232,6 +233,7 @@ pub enum ValueState {
     Get,
 }
 
+// Represents a MIDI NRPN message (3/4 MIDI CC messages)
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Nrpn {
     Absolute(ID, u8, u8),
@@ -241,6 +243,7 @@ pub enum Nrpn {
 }
 
 impl Nrpn {
+    /// Produces a Vec of bytes corresponding to the NRPN message.
     pub fn to_bytes(&self) -> Vec<u8> {
         use Nrpn::*;
         match self {
