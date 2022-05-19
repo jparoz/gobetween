@@ -10,13 +10,15 @@ pub enum Message {
     // Level(ID, u16),
     Level(Source, Target, ValueState),
     Mute(Source, ButtonState),
+    Pan(Source, Target, ValueState),
+    Assign(Source, Target, ButtonState),
 }
 
 impl Message {
     pub(super) fn to_nrpn(&self) -> Nrpn {
         use Message::*;
         match self {
-            Level(source, target, value_state) => {
+            Level(source, target, value_state) | Pan(source, target, value_state) => {
                 let id = ID::from_source_target(*source, *target);
                 match value_state {
                     ValueState::Set(val) => {
@@ -38,36 +40,26 @@ impl Message {
                     ButtonState::Get => Nrpn::Get(id),
                 }
             }
+
+            Assign(source, target, button_state) => {
+                let id = ID::from_source_target(*source, *target);
+                match button_state {
+                    ButtonState::On => Nrpn::Absolute(id, 0x00, 0x01),
+                    ButtonState::Off => Nrpn::Absolute(id, 0x00, 0x00),
+                    ButtonState::Toggle => Nrpn::Increment(id),
+                    ButtonState::Get => Nrpn::Get(id),
+                }
+            }
         }
     }
 
     pub(super) fn from_nrpn(nrpn: Nrpn) -> Self {
-        use Message::*;
         use Nrpn::*;
         match nrpn {
-            Absolute(id @ ID(msb, lsb), coarse, fine) => {
-                // @Todo @Fixme @XXX: check that this is a level ID
-                match msb & 0xF0 {
-                    0x00 => {
-                        let (source, _target) = id.source_target();
-                        let button_state = if fine == 0x01 {
-                            ButtonState::On
-                        } else {
-                            ButtonState::Off
-                        };
-                        Mute(source, button_state)
-                    }
-                    0x40 => {
-                        let (source, target) = id.source_target();
-                        let value_state = ValueState::Set(bit14!(coarse, fine));
-                        Level(source, target.unwrap(), value_state) // @XXX: unwrap
-                    }
-                    0x50 => todo!(), // pan
-                    0x60 => todo!(), // assign
-                    _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
-                }
-            }
-            _ => todo!(),
+            Absolute(id, coarse, fine) => id.absolute(coarse, fine),
+            Increment(id) => id.increment(),
+            Decrement(id) => id.decrement(),
+            Get(id) => id.get(),
         }
     }
 }
