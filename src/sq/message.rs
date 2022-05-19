@@ -1,20 +1,42 @@
 use bytes::Buf;
 
+use super::id::ID;
+
 /// Messages sent and received from the SQ object.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Message {
     // @Todo: this shouldn't need to have an ID, but it should be a higher-level object like Fader
     // or Channel or something
-    Level(ID, u16),
+    // Level(ID, u16),
+    Level(Source, Target, ValueState),
+    Mute(Source, ButtonState),
 }
 
 impl Message {
     pub(super) fn to_nrpn(&self) -> Nrpn {
         use Message::*;
         match self {
-            Level(id, val) => {
-                let (val_lsb, val_msb) = bit14!(val);
-                Nrpn::Absolute(*id, val_msb, val_lsb)
+            Level(source, target, value_state) => {
+                let id = ID::from_source_target(*source, *target);
+                match value_state {
+                    ValueState::Set(val) => {
+                        let (val_msb, val_lsb) = bit14!(val);
+                        Nrpn::Absolute(id, val_msb, val_lsb)
+                    }
+                    ValueState::Increment => Nrpn::Increment(id),
+                    ValueState::Decrement => Nrpn::Decrement(id),
+                    ValueState::Get => Nrpn::Get(id),
+                }
+            }
+
+            Mute(source, button_state) => {
+                let id = ID::from_mute(*source);
+                match button_state {
+                    ButtonState::On => Nrpn::Absolute(id, 0x00, 0x01),
+                    ButtonState::Off => Nrpn::Absolute(id, 0x00, 0x00),
+                    ButtonState::Toggle => Nrpn::Increment(id),
+                    ButtonState::Get => Nrpn::Get(id),
+                }
             }
         }
     }
@@ -25,16 +47,98 @@ impl Message {
         match nrpn {
             Absolute(id @ ID(msb, lsb), coarse, fine) => {
                 // @Todo @Fixme @XXX: check that this is a level ID
-                Level(id, bit14!(fine, coarse))
+                match msb & 0xF0 {
+                    0x00 => {
+                        let (source, _target) = id.source_target();
+                        let button_state = if fine == 0x01 {
+                            ButtonState::On
+                        } else {
+                            ButtonState::Off
+                        };
+                        Mute(source, button_state)
+                    }
+                    0x40 => {
+                        let (source, target) = id.source_target();
+                        let value_state = ValueState::Set(bit14!(coarse, fine));
+                        Level(source, target.unwrap(), value_state) // @XXX: unwrap
+                    }
+                    0x50 => todo!(), // pan
+                    0x60 => todo!(), // assign
+                    _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
+                }
             }
             _ => todo!(),
         }
     }
 }
 
-/// ID(msb, lsb)
+/// A Source is anything that can be assigned, have its level or pan changed, or muted.
+/// Most operations will require both a Source and a Target; mutes only require a Source, as they
+/// are shared between Targets.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct ID(u8, u8);
+pub enum Source {
+    /// Valid values are Input(1..=48)
+    Input(u8),
+
+    /// Valid values are Group(1..=12)
+    Group(u8),
+
+    /// Valid values are FXRet(1..=8)
+    FXRet(u8),
+
+    LR,
+
+    /// Valid values are Aux(1..=12)
+    Aux(u8),
+
+    /// Valid values are FXSend(1..=4)
+    FXSend(u8),
+
+    /// Valid values are Mtx(1..=3)
+    Mtx(u8),
+    // @Todo: DCA
+    // @Todo: Mute groups
+}
+
+/// A Target is anything that can have Sources assigned to it, or have their level or pan changed.
+/// Most operations will require both a Source and a Target.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Target {
+    LR,
+
+    /// Valid values are Aux(1..=12)
+    Aux(u8),
+
+    /// Valid values are Group(1..=12)
+    Group(u8),
+
+    /// Valid values are FXSend(1..=4)
+    FXSend(u8),
+
+    /// Valid values are Mtx(1..=3)
+    Mtx(u8),
+
+    Output,
+    // @Todo: Control (for DCA groups) (or maybe can reuse Output? only if there's no ambiguity)
+}
+
+/// Used for updating the state of either a mute or an assignment.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ButtonState {
+    On,
+    Off,
+    Toggle,
+    Get,
+}
+
+/// Used for updating the state of either a level or a pan.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ValueState {
+    Set(u16),
+    Increment,
+    Decrement,
+    Get,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Nrpn {
