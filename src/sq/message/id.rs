@@ -1,121 +1,12 @@
-use super::{ButtonState, Message, Source, Target, ValueState};
+use super::{Source, Target};
 
 /// ID(msb, lsb)
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ID(pub u8, pub u8);
 
 impl ID {
-    /// Returns a SQ Message based on the ID, given the NRPN arguments.
-    // @Fixme: should this be here, or somewhere else?? I like the ID parsing being hidden here, but
-    // it sort of doesn't make sense to return a Message from here.
-    pub fn absolute(&self, coarse: u8, fine: u8) -> Message {
-        let ID(msb, _lsb) = self;
-
-        use Message::*;
-        match msb & 0xF0 {
-            0x00 => {
-                let button_state = if fine == 0x01 {
-                    ButtonState::On
-                } else {
-                    ButtonState::Off
-                };
-                Mute(self.to_mute(), button_state)
-            }
-            0x40 => {
-                let (source, target) = self.to_source_target();
-                let value_state = ValueState::Set(bit14!(coarse, fine));
-                Level(source, target, value_state)
-            }
-            0x50 => {
-                let (source, target) = self.to_source_target();
-                let value_state = ValueState::Set(bit14!(coarse, fine));
-                Pan(source, target, value_state)
-            }
-            0x60 => {
-                let (source, target) = self.to_source_target();
-                let button_state = if fine == 0x01 {
-                    ButtonState::On
-                } else {
-                    ButtonState::Off
-                };
-                Assign(source, target, button_state)
-            }
-
-            _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
-        }
-    }
-
-    pub fn increment(&self) -> Message {
-        let ID(msb, _lsb) = self;
-
-        use Message::*;
-        match msb & 0xF0 {
-            0x00 => Mute(self.to_mute(), ButtonState::Toggle),
-            0x40 => {
-                let (source, target) = self.to_source_target();
-                Level(source, target, ValueState::Increment)
-            }
-            0x50 => {
-                let (source, target) = self.to_source_target();
-                Pan(source, target, ValueState::Increment)
-            }
-            0x60 => {
-                let (source, target) = self.to_source_target();
-                Assign(source, target, ButtonState::Toggle)
-            }
-
-            _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
-        }
-    }
-
-    pub fn decrement(&self) -> Message {
-        let ID(msb, _lsb) = self;
-
-        use Message::*;
-        match msb & 0xF0 {
-            0x00 => Mute(self.to_mute(), ButtonState::Toggle),
-            0x40 => {
-                let (source, target) = self.to_source_target();
-                Level(source, target, ValueState::Decrement)
-            }
-            0x50 => {
-                let (source, target) = self.to_source_target();
-                Pan(source, target, ValueState::Decrement)
-            }
-            0x60 => {
-                let (source, target) = self.to_source_target();
-                Assign(source, target, ButtonState::Toggle)
-            }
-
-            _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
-        }
-    }
-
-    pub fn get(&self) -> Message {
-        let ID(msb, _lsb) = self;
-
-        use Message::*;
-        match msb & 0xF0 {
-            0x00 => Mute(self.to_mute(), ButtonState::Get),
-            0x40 => {
-                let (source, target) = self.to_source_target();
-                Level(source, target, ValueState::Get)
-            }
-            0x50 => {
-                let (source, target) = self.to_source_target();
-                Pan(source, target, ValueState::Get)
-            }
-            0x60 => {
-                let (source, target) = self.to_source_target();
-                Assign(source, target, ButtonState::Get)
-            }
-
-            _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
-        }
-    }
-
     // This is an internal helper function, where the ID is guaranteed to be a mute.
-    fn to_mute(&self) -> Source {
+    pub(super) fn to_mute(&self) -> Source {
         use Source::*;
         match self {
             ID(0x00, lsb @ 0x00..=0x2F) => Input(lsb + 1),
@@ -135,9 +26,29 @@ impl ID {
         }
     }
 
+    /// Makes an ID from a Source, which must be a Mute.
+    pub(super) fn from_mute(source: Source) -> Self {
+        use Source::*;
+        match source {
+            Input(lsb) => ID(0x00, lsb - 1),
+            Group(lsb) => ID(0x00, lsb + 0x2F),
+            FXRet(lsb) => ID(0x00, lsb + 0x3B),
+            LR => ID(0x00, 0x44),
+            Aux(lsb) => ID(0x00, lsb + 0x44),
+            FXSend(lsb) => ID(0x00, lsb + 0x50),
+            Mtx(lsb) => ID(0x00, lsb + 0x54),
+            // @Todo: DCA
+            // Dca(lsb) => ID(0x02, lsb - 1)
+
+            // @Todo: Mute groups
+            // MuteGroup(lsb) => ID(0x04, lsb - 1)
+            // _ => unimplemented!("invalid mute ID source: {:?}", source),
+        }
+    }
+
     // This is an internal helper function, where the msb is guaranteed to begin with a 0 nibble,
     // and the ID is guaranteed to be something other than a mute.
-    fn to_source_target(&self) -> (Source, Target) {
+    pub(super) fn to_source_target(&self) -> (Source, Target) {
         match self {
             ID(0x00, 0x00) => (Source::Input(1), Target::LR),
             ID(0x00, 0x01) => (Source::Input(2), Target::LR),
@@ -1410,26 +1321,6 @@ impl ID {
             ID(0x0F, 0x13) => (Source::Mtx(3), Target::Output),
 
             _ => unimplemented!("invalid ID: {:?}", self),
-        }
-    }
-
-    /// Makes an ID from a Source, which must be a Mute.
-    pub(super) fn from_mute(source: Source) -> Self {
-        use Source::*;
-        match source {
-            Input(lsb) => ID(0x00, lsb - 1),
-            Group(lsb) => ID(0x00, lsb + 0x2F),
-            FXRet(lsb) => ID(0x00, lsb + 0x3B),
-            LR => ID(0x00, 0x44),
-            Aux(lsb) => ID(0x00, lsb + 0x44),
-            FXSend(lsb) => ID(0x00, lsb + 0x50),
-            Mtx(lsb) => ID(0x00, lsb + 0x54),
-            // @Todo: DCA
-            // Dca(lsb) => ID(0x02, lsb - 1)
-
-            // @Todo: Mute groups
-            // MuteGroup(lsb) => ID(0x04, lsb - 1)
-            // _ => unimplemented!("invalid mute ID source: {:?}", source),
         }
     }
 

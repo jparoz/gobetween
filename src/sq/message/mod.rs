@@ -1,7 +1,7 @@
 use bytes::Buf;
 
 mod id;
-use id::ID;
+pub use id::ID;
 
 /// Messages sent and received from the SQ object.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -54,13 +54,112 @@ impl Message {
         }
     }
 
+    /// Returns a SQ Message based on the ID, given the NRPN message.
     pub(super) fn from_nrpn(nrpn: Nrpn) -> Self {
         use Nrpn::*;
         match nrpn {
-            Absolute(id, coarse, fine) => id.absolute(coarse, fine),
-            Increment(id) => id.increment(),
-            Decrement(id) => id.decrement(),
-            Get(id) => id.get(),
+            Absolute(id, coarse, fine) => {
+                let ID(msb, _lsb) = id;
+
+                use Message::*;
+                match msb & 0xF0 {
+                    0x00 => {
+                        let button_state = if fine == 0x01 {
+                            ButtonState::On
+                        } else {
+                            ButtonState::Off
+                        };
+                        Mute(id.to_mute(), button_state)
+                    }
+                    0x40 => {
+                        let (source, target) = id.to_source_target();
+                        let value_state = ValueState::Set(bit14!(coarse, fine));
+                        Level(source, target, value_state)
+                    }
+                    0x50 => {
+                        let (source, target) = id.to_source_target();
+                        let value_state = ValueState::Set(bit14!(coarse, fine));
+                        Pan(source, target, value_state)
+                    }
+                    0x60 => {
+                        let (source, target) = id.to_source_target();
+                        let button_state = if fine == 0x01 {
+                            ButtonState::On
+                        } else {
+                            ButtonState::Off
+                        };
+                        Assign(source, target, button_state)
+                    }
+
+                    _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
+                }
+            }
+            Increment(id) => {
+                let ID(msb, _lsb) = id;
+
+                use Message::*;
+                match msb & 0xF0 {
+                    0x00 => Mute(id.to_mute(), ButtonState::Toggle),
+                    0x40 => {
+                        let (source, target) = id.to_source_target();
+                        Level(source, target, ValueState::Increment)
+                    }
+                    0x50 => {
+                        let (source, target) = id.to_source_target();
+                        Pan(source, target, ValueState::Increment)
+                    }
+                    0x60 => {
+                        let (source, target) = id.to_source_target();
+                        Assign(source, target, ButtonState::Toggle)
+                    }
+
+                    _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
+                }
+            }
+            Decrement(id) => {
+                let ID(msb, _lsb) = id;
+
+                use Message::*;
+                match msb & 0xF0 {
+                    0x00 => Mute(id.to_mute(), ButtonState::Toggle),
+                    0x40 => {
+                        let (source, target) = id.to_source_target();
+                        Level(source, target, ValueState::Decrement)
+                    }
+                    0x50 => {
+                        let (source, target) = id.to_source_target();
+                        Pan(source, target, ValueState::Decrement)
+                    }
+                    0x60 => {
+                        let (source, target) = id.to_source_target();
+                        Assign(source, target, ButtonState::Toggle)
+                    }
+
+                    _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
+                }
+            }
+            Get(id) => {
+                let ID(msb, _lsb) = id;
+
+                use Message::*;
+                match msb & 0xF0 {
+                    0x00 => Mute(id.to_mute(), ButtonState::Get),
+                    0x40 => {
+                        let (source, target) = id.to_source_target();
+                        Level(source, target, ValueState::Get)
+                    }
+                    0x50 => {
+                        let (source, target) = id.to_source_target();
+                        Pan(source, target, ValueState::Get)
+                    }
+                    0x60 => {
+                        let (source, target) = id.to_source_target();
+                        Assign(source, target, ButtonState::Get)
+                    }
+
+                    _ => unimplemented!("invalid ID MSB upper nibble: {:?}", id),
+                }
+            }
         }
     }
 }
