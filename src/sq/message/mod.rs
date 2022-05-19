@@ -1,6 +1,7 @@
 use bytes::Buf;
 
-use super::id::ID;
+mod id;
+use id::ID;
 
 /// Messages sent and received from the SQ object.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

@@ -6,7 +6,6 @@ use tokio::net::TcpStream;
 use tokio::select;
 use tokio::sync::{broadcast, mpsc};
 
-pub mod id; // pub?
 pub mod message;
 
 use message::Message;

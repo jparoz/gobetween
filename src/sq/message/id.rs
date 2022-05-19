@@ -1,4 +1,4 @@
-use super::message::{ButtonState, Message, Source, Target, ValueState};
+use super::{ButtonState, Message, Source, Target, ValueState};
 
 /// ID(msb, lsb)
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
