@@ -9,37 +9,36 @@ impl ID {
     // @Fixme: should this be here, or somewhere else?? I like the ID parsing being hidden here, but
     // it sort of doesn't make sense to return a Message from here.
     pub fn absolute(&self, coarse: u8, fine: u8) -> Message {
-        let ID(msb, lsb) = self;
+        let ID(msb, _lsb) = self;
 
         use Message::*;
         match msb & 0xF0 {
             0x00 => {
-                let (source, _target) = self.source_target();
                 let button_state = if fine == 0x01 {
                     ButtonState::On
                 } else {
                     ButtonState::Off
                 };
-                Mute(source, button_state)
+                Mute(self.to_mute(), button_state)
             }
             0x40 => {
-                let (source, target) = self.source_target();
+                let (source, target) = self.to_source_target();
                 let value_state = ValueState::Set(bit14!(coarse, fine));
-                Level(source, target.unwrap(), value_state) // @XXX: unwrap
+                Level(source, target, value_state)
             }
             0x50 => {
-                let (source, target) = self.source_target();
+                let (source, target) = self.to_source_target();
                 let value_state = ValueState::Set(bit14!(coarse, fine));
-                Pan(source, target.unwrap(), value_state) // @XXX: unwrap
+                Pan(source, target, value_state)
             }
             0x60 => {
-                let (source, target) = self.source_target();
+                let (source, target) = self.to_source_target();
                 let button_state = if fine == 0x01 {
                     ButtonState::On
                 } else {
                     ButtonState::Off
                 };
-                Assign(source, target.unwrap(), button_state) // @XXX: unwrap
+                Assign(source, target, button_state)
             }
 
             _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
@@ -47,25 +46,22 @@ impl ID {
     }
 
     pub fn increment(&self) -> Message {
-        let ID(msb, lsb) = self;
+        let ID(msb, _lsb) = self;
 
         use Message::*;
         match msb & 0xF0 {
-            0x00 => {
-                let (source, _target) = self.source_target();
-                Mute(source, ButtonState::Toggle)
-            }
+            0x00 => Mute(self.to_mute(), ButtonState::Toggle),
             0x40 => {
-                let (source, target) = self.source_target();
-                Level(source, target.unwrap(), ValueState::Increment) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Level(source, target, ValueState::Increment)
             }
             0x50 => {
-                let (source, target) = self.source_target();
-                Pan(source, target.unwrap(), ValueState::Increment) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Pan(source, target, ValueState::Increment)
             }
             0x60 => {
-                let (source, target) = self.source_target();
-                Assign(source, target.unwrap(), ButtonState::Toggle) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Assign(source, target, ButtonState::Toggle)
             }
 
             _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
@@ -73,25 +69,22 @@ impl ID {
     }
 
     pub fn decrement(&self) -> Message {
-        let ID(msb, lsb) = self;
+        let ID(msb, _lsb) = self;
 
         use Message::*;
         match msb & 0xF0 {
-            0x00 => {
-                let (source, _target) = self.source_target();
-                Mute(source, ButtonState::Toggle)
-            }
+            0x00 => Mute(self.to_mute(), ButtonState::Toggle),
             0x40 => {
-                let (source, target) = self.source_target();
-                Level(source, target.unwrap(), ValueState::Decrement) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Level(source, target, ValueState::Decrement)
             }
             0x50 => {
-                let (source, target) = self.source_target();
-                Pan(source, target.unwrap(), ValueState::Decrement) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Pan(source, target, ValueState::Decrement)
             }
             0x60 => {
-                let (source, target) = self.source_target();
-                Assign(source, target.unwrap(), ButtonState::Toggle) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Assign(source, target, ButtonState::Toggle)
             }
 
             _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
@@ -99,42 +92,25 @@ impl ID {
     }
 
     pub fn get(&self) -> Message {
-        let ID(msb, lsb) = self;
+        let ID(msb, _lsb) = self;
 
         use Message::*;
         match msb & 0xF0 {
-            0x00 => {
-                let (source, _target) = self.source_target();
-                Mute(source, ButtonState::Get)
-            }
+            0x00 => Mute(self.to_mute(), ButtonState::Get),
             0x40 => {
-                let (source, target) = self.source_target();
-                Level(source, target.unwrap(), ValueState::Get) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Level(source, target, ValueState::Get)
             }
             0x50 => {
-                let (source, target) = self.source_target();
-                Pan(source, target.unwrap(), ValueState::Get) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Pan(source, target, ValueState::Get)
             }
             0x60 => {
-                let (source, target) = self.source_target();
-                Assign(source, target.unwrap(), ButtonState::Get) // @XXX: unwrap
+                let (source, target) = self.to_source_target();
+                Assign(source, target, ButtonState::Get)
             }
 
             _ => unimplemented!("invalid ID MSB upper nibble: {:?}", self),
-        }
-    }
-
-    /// If the second tuple argument is None, then it's a mute ID.
-    /// If the second tuple argument is Some(target), then it's another type of ID
-    /// (which type can be figured out by matching the most significant nibble of the MSB,
-    /// but that's not this method's job).
-    fn source_target(&self) -> (Source, Option<Target>) {
-        match self {
-            ID(0x00..=0x0F, _) => (self.to_mute(), None),
-            ID(msb, lsb) => {
-                let (source, target) = ID(msb & 0x0F, *lsb).to_source_target();
-                (source, Some(target))
-            }
         }
     }
 
@@ -1437,8 +1413,8 @@ impl ID {
         }
     }
 
-    // This should be an internal helper function ?????
-    pub fn from_mute(source: Source) -> Self {
+    /// Makes an ID from a Source, which must be a Mute.
+    pub(super) fn from_mute(source: Source) -> Self {
         use Source::*;
         match source {
             Input(lsb) => ID(0x00, lsb - 1),
@@ -1457,8 +1433,8 @@ impl ID {
         }
     }
 
-    // This should be an internal helper function ?????
-    pub fn from_source_target(source: Source, target: Target) -> Self {
+    /// Makes an ID from a Source and a Target.
+    pub(super) fn from_source_target(source: Source, target: Target) -> Self {
         match (source, target) {
             (Source::Input(1), Target::LR) => ID(0x00, 0x00),
             (Source::Input(2), Target::LR) => ID(0x00, 0x01),
