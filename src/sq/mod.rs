@@ -39,7 +39,7 @@ impl SQ {
                     bytes_read = socket.read_buf(&mut buf) => {
                         // @Fixme: shouldn't unwrap
                         let _bytes_read = bytes_read.unwrap();
-                        if let Some(nrpn) = message::Nrpn::from_buf(&mut buf) {
+                        while let Some(nrpn) = message::Nrpn::from_buf(&mut buf) {
                             // @Fixme: shouldn't unwrap
                             cloned_tx.send(Message::from_nrpn(nrpn)).unwrap();
                         }
