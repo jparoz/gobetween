@@ -46,10 +46,11 @@ impl ID {
         }
     }
 
-    // This is an internal helper function, where the msb is guaranteed to begin with a 0 nibble,
-    // and the ID is guaranteed to be something other than a mute.
+    // This is an internal helper function; the ID is guaranteed to be something other than a mute.
     pub(super) fn to_source_target(&self) -> (Source, Target) {
-        match self {
+        // We should ignore the upper nibble of the MSB, it's handled later on.
+        let ID(msb, lsb) = self;
+        match ID(msb & 0x0F, *lsb) {
             ID(0x00, 0x00) => (Source::Input(1), Target::LR),
             ID(0x00, 0x01) => (Source::Input(2), Target::LR),
             ID(0x00, 0x02) => (Source::Input(3), Target::LR),
