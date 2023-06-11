@@ -2,6 +2,8 @@ use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use thiserror::Error;
 use tokio::sync::broadcast;
 
+// @Note: should we allow this? Try removing after parsing from the network socket
+#[allow(dead_code)]
 pub mod message;
 
 use message::{Button, Encoder, Fader, Message};

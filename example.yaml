@@ -1,0 +1,6 @@
+midi_devices:
+  - name: FaderPort 8
+    address: 192.168.1.234:33554
+  - name: SQ-5
+    midi_in:  SQ5 - MIDI Out
+    midi_out: SQ5 - MIDI In
