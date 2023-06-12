@@ -1,6 +1,6 @@
 use std::io;
 
-use bytes::BytesMut;
+use bytes::{Buf, BytesMut};
 use midir::{MidiInput, MidiOutput};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -93,30 +93,17 @@ impl Device {
                         // @Fixme: shouldn't unwrap
                         let _bytes_read = bytes_read.unwrap();
 
-                        // Keep track of the chunks we split off
-                        let mut splits = Vec::new();
-
                         // @Todo @XXX: don't ignore this error, we could get stuck
                         while let Ok((msg, len)) =
                             MidiMsg::from_midi_with_context(&buf, &mut ctx)
                         {
                             // Advance the buffer by the length of the parsed MIDI message.
-                            splits.push(buf.split_to(len)); // @Checkme
+                            buf.advance(len);
 
                             // Ignore the return value;
                             // error case is when there are no receivers,
                             // which we don't care about.
                             let _ = broadcast_tx.send(msg);
-                        }
-
-                        if !buf.is_empty()  {
-                            todo!("handle partial messages in TCP packets")
-                        }
-
-                        // Unsplit all the chunks to recover the whole buffer
-                        while let Some(mut chunk) = splits.pop() {
-                            chunk.unsplit(buf);
-                            buf = chunk;
                         }
                     }
                     msg = rx.recv() => {
