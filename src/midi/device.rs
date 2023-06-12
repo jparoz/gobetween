@@ -1,6 +1,7 @@
 use std::io;
 
 use bytes::BytesMut;
+use midir::{MidiInput, MidiOutput};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::select;
@@ -77,7 +78,11 @@ impl Device {
 
         tokio::spawn(async move {
             // @Fixme: shouldn't unwrap
-            let mut socket = TcpStream::connect(addr).await.unwrap();
+            let mut socket = TcpStream::connect(&addr).await.unwrap();
+
+            // @XXX
+            println!("Connected to device at address {addr}");
+
             let mut buf = BytesMut::new();
             let broadcast_tx = cloned_broadcast_tx;
             let mut ctx = midi_msg::ReceiverContext::new();
@@ -93,10 +98,15 @@ impl Device {
 
                         // @Todo @XXX: don't ignore this error, we could get stuck
                         while let Ok((msg, len)) =
-                            MidiMsg::from_midi_with_context(&buf, &mut ctx) {
+                            MidiMsg::from_midi_with_context(&buf, &mut ctx)
+                        {
+                            // Advance the buffer by the length of the parsed MIDI message.
                             splits.push(buf.split_to(len)); // @Checkme
-                            // @Fixme: shouldn't unwrap
-                            broadcast_tx.send(msg).unwrap();
+
+                            // Ignore the return value;
+                            // error case is when there are no receivers,
+                            // which we don't care about.
+                            let _ = broadcast_tx.send(msg);
                         }
 
                         if !buf.is_empty()  {
@@ -125,7 +135,98 @@ impl Device {
     }
 
     fn usb(name: &str, in_name: &str, out_name: &str) -> Result<Self, Error> {
-        todo!()
+        let (broadcast_tx, _broadcast_rx) = broadcast::channel(128); // @TestMe: is this the right capacity?
+        let (tx, mut rx): (mpsc::Sender<MidiMsg>, mpsc::Receiver<MidiMsg>) = mpsc::channel(4);
+        let cloned_broadcast_tx = broadcast_tx.clone();
+
+        let orig_name = name;
+
+        // @XXX: shouldn't clone these
+        let name = name.to_string();
+        let in_name = in_name.to_string();
+        let out_name = out_name.to_string();
+
+        // @Fixme @Todo @XXX: Don't use unwrap in here
+        tokio::spawn(async move {
+            let broadcast_tx = cloned_broadcast_tx;
+            let mut ctx = midi_msg::ReceiverContext::new();
+
+            // @Checkme: does using "name" make sense here?
+            let input = MidiInput::new(&name).unwrap();
+            let output = MidiOutput::new(&name).unwrap();
+
+            let mut input_port = None;
+            for port in input.ports().iter() {
+                // @XXX: REALLY DON'T UNWRAP
+                let name = input.port_name(port).unwrap();
+                println!("Found input port: {name}");
+                if name == in_name {
+                    input_port = Some(port.clone());
+                    break;
+                }
+            }
+
+            // @XXX: unwrap
+            let input_port = input_port
+                .ok_or_else(|| Error::CouldntFindMidiInput(in_name.to_string()))
+                .unwrap();
+
+            let _input_connection = input
+                .connect(
+                    &input_port,
+                    // @Checkme: does using "name" make sense here?
+                    &name,
+                    move |_timestamp, mut midi_bytes, ()| {
+                        // @Todo @XXX: don't ignore this error, we could get stuck
+                        while let Ok((msg, len)) =
+                            MidiMsg::from_midi_with_context(midi_bytes, &mut ctx)
+                        {
+                            // Advance the buffer by the length of the parsed MIDI message.
+                            midi_bytes = &midi_bytes[len..];
+
+                            // Ignore the return value;
+                            // error case is when there are no receivers,
+                            // which we don't care about.
+                            let _ = broadcast_tx.send(msg);
+                        }
+                    },
+                    (),
+                )
+                .unwrap();
+
+            let mut output_port = None;
+            for port in output.ports().iter() {
+                let name = output.port_name(port).unwrap();
+                println!("Found output port: {name}");
+                if name == out_name {
+                    output_port = Some(port.clone());
+                    break;
+                }
+            }
+
+            let output_port = output_port
+                .ok_or_else(|| Error::CouldntFindMidiOutput(out_name.to_string()))
+                .unwrap();
+
+            // @Checkme: does using "name" make sense here?
+            let mut output_connection = output.connect(&output_port, &name).unwrap();
+
+            // @XXX
+            println!("Connected to device {name}");
+
+            loop {
+                let msg = rx.recv().await.unwrap(); // @Fixme: shouldn't unwrap, maybe pattern match?
+
+                // @XXX: unwrap
+                output_connection.send(&msg.to_midi()).unwrap();
+            }
+        });
+
+        Ok(Device {
+            name: orig_name.to_string(),
+            broadcast_tx,
+            tx,
+        })
     }
 }
 
@@ -137,6 +238,12 @@ pub enum Error {
 
     #[error("Channel send error, couldn't send MIDI message {0:?}")]
     Send(#[from] tokio::sync::mpsc::error::SendError<MidiMsg>),
+
+    #[error("Couldn't find MIDI input with name: {0}")]
+    CouldntFindMidiInput(String),
+
+    #[error("Couldn't find MIDI output with name: {0}")]
+    CouldntFindMidiOutput(String),
 
     #[error("Dummy error XXX")]
     Dummy, // @XXX
