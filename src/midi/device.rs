@@ -80,8 +80,7 @@ impl Device {
             // @Fixme: shouldn't unwrap
             let mut socket = TcpStream::connect(&addr).await.unwrap();
 
-            // @XXX
-            println!("Connected to device at address {addr}");
+            log::info!("Connected to device at address {addr}");
 
             let mut buf = BytesMut::new();
             let broadcast_tx = cloned_broadcast_tx;
@@ -159,7 +158,7 @@ impl Device {
             for port in input.ports().iter() {
                 // @XXX: REALLY DON'T UNWRAP
                 let name = input.port_name(port).unwrap();
-                println!("Found input port: {name}");
+                log::trace!("Found input port: {name}");
                 if name == in_name {
                     input_port = Some(port.clone());
                     break;
@@ -197,7 +196,7 @@ impl Device {
             let mut output_port = None;
             for port in output.ports().iter() {
                 let name = output.port_name(port).unwrap();
-                println!("Found output port: {name}");
+                log::trace!("Found output port: {name}");
                 if name == out_name {
                     output_port = Some(port.clone());
                     break;
@@ -211,8 +210,7 @@ impl Device {
             // @Checkme: does using "name" make sense here?
             let mut output_connection = output.connect(&output_port, &name).unwrap();
 
-            // @XXX
-            println!("Connected to device {name}");
+            log::info!("Connected to device {name}");
 
             loop {
                 let msg = rx.recv().await.unwrap(); // @Fixme: shouldn't unwrap, maybe pattern match?
