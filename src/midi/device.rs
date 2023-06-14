@@ -242,7 +242,4 @@ pub enum Error {
 
     #[error("Couldn't find MIDI output with name: {0}")]
     CouldntFindMidiOutput(String),
-
-    #[error("Dummy error XXX")]
-    Dummy, // @XXX
 }
