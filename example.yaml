@@ -1,9 +1,9 @@
-midi_devices:
+devices:
   - name: FaderPort 8
-    midi_in:  PreSonus FP8 Port 1
-    midi_out: PreSonus FP8 Port 1
-    # address: 192.168.1.234:33554
+    midi_in:  PreSonus FP8
+    midi_out: PreSonus FP8
+    # midi_address: 192.168.1.234:33554
   - name: SQ-5
     # midi_in:  SQ - MIDI Out
     # midi_out: SQ - MIDI In
-    address: 192.168.1.71:51325
+    midi_address: 192.168.1.71:51325

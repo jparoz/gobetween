@@ -1,4 +1,6 @@
-mod midi;
+mod device;
+
+use device::DeviceInfo;
 
 use std::fs::File;
 use std::path::PathBuf;
@@ -29,7 +31,7 @@ struct Args {
 // @Todo: move this to its own module, maybe along with Args
 #[derive(Deserialize, Debug)]
 struct Config {
-    midi_devices: Vec<midi::DeviceInfo>,
+    devices: Vec<DeviceInfo>,
 }
 
 // @Todo: proper error handling
@@ -49,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Connect to USB MIDI devices
     let mut midi_devices = Vec::new();
-    for device_info in config.midi_devices {
+    for device_info in config.devices {
         log::info!("Connecting to device: {device_info:?}");
         midi_devices.push(device_info.connect()?);
     }
