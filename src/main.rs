@@ -1,6 +1,7 @@
 mod device;
 
 use device::DeviceInfo;
+use tokio::task::JoinSet;
 
 use std::fs::File;
 use std::path::PathBuf;
@@ -46,26 +47,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .format_timestamp(None)
         .init();
 
-    let config_file = File::open(args.config)?;
+    let config_file = File::open(&args.config)?;
     let config: Config = serde_yaml::from_reader(config_file)?;
 
-    // Connect to USB MIDI devices
-    let mut midi_devices = Vec::new();
-    for device_info in config.devices {
-        log::info!("Connecting to device: {device_info:?}");
-        midi_devices.push(device_info.connect()?);
+    if config.devices.is_empty() {
+        log::warn!(
+            "No devices specified in config file `{}`, exiting!",
+            args.config.display()
+        );
+        return Ok(());
     }
 
-    // Print all broadcasted messages for debugging
+    // Connect to the specified devices
+    let mut devices = Vec::new();
+    let mut join_set = JoinSet::new();
+    for device_info in config.devices {
+        log::info!("Connecting to device: {device_info:?}");
+        devices.push(device_info.connect(&mut join_set)?);
+    }
+
     let mut streams = Vec::new();
-    for device in midi_devices.iter() {
+    for device in devices.iter() {
         let rx = device.subscribe();
         streams.push(BroadcastStream::new(rx));
     }
+    let mut message_echo_stream = futures::stream::select_all(streams);
 
-    let mut all_stream = futures::stream::select_all(streams);
-    while let Some(msg) = all_stream.next().await {
-        log::trace!("Got a message: {msg:?}");
+    loop {
+        tokio::select! {
+            // Print all broadcasted messages for debugging
+            Some(msg) = message_echo_stream.next() => {
+                log::trace!("Got a message: {msg:?}");
+            }
+
+            // Join all the spawned tasks,
+            // so that we can (in principle) do something with the return values.
+            Some(join_result) = join_set.join_next() => {
+                match join_result {
+                    // Task joined properly, returning the happy-path message for that device
+                    Ok(Ok(msg)) => log::info!("{msg}"),
+
+                    // Task joined properly, returning an Err
+                    Ok(Err(err)) => log::error!("{err}"),
+
+                    // Task didn't join properly
+                    Err(join_err) => log::error!("Join error: {join_err}"),
+                }
+            }
+
+            else => { break }
+        }
     }
 
     Ok(())
