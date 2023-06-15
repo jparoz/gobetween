@@ -21,18 +21,19 @@ pub struct DeviceInfo {
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(untagged)]
 pub enum ConnectionInfo {
-    /// TCP MIDI connection information.
-    Tcp {
+    /// MIDI over TCP connection information.
+    TcpMidi {
+        /// The address and port of the TCP MIDI device.
         /// This will be used by [`ToSocketAddrs`],
         /// so should be something like `"123.456.40.13:8033"`.
-        address: String,
+        midi_address: String,
     },
 
-    /// USB MIDI connection information.
-    Usb {
-        /// The name of the USB MIDI input device.
+    /// MIDI connection information.
+    Midi {
+        /// The name of the MIDI input device.
         midi_in: String,
-        /// The name of the USB MIDI output device.
+        /// The name of the MIDI output device.
         midi_out: String,
     },
 }
@@ -41,8 +42,8 @@ impl DeviceInfo {
     pub fn connect(&self) -> Result<Device, Error> {
         use ConnectionInfo::*;
         match &self.connection_info {
-            Tcp { address } => Device::tcp(&self.name, address.to_string()),
-            Usb { midi_in, midi_out } => Device::usb(&self.name, midi_in, midi_out),
+            TcpMidi { midi_address } => Device::tcp_midi(&self.name, midi_address.to_string()),
+            Midi { midi_in, midi_out } => Device::midi(&self.name, midi_in, midi_out),
         }
     }
 }
@@ -54,7 +55,7 @@ pub struct Device {
     pub name: String,
 
     /// This is a clone of the sender moved to the main device callback.
-    /// Use [`TcpDevice::subscribe`] to receive MIDI messages from this device.
+    /// Use [`Device::subscribe`] to receive MIDI messages from this device.
     broadcast_tx: broadcast::Sender<MidiMsg>,
 
     /// This is the sender to which we send MIDI devices for this device.
@@ -71,7 +72,7 @@ impl Device {
         Ok(())
     }
 
-    fn tcp(name: &str, addr: String) -> Result<Self, Error> {
+    fn tcp_midi(name: &str, addr: String) -> Result<Self, Error> {
         let (broadcast_tx, _broadcast_rx) = broadcast::channel(128); // @TestMe: is this the right capacity?
         let (tx, mut rx): (mpsc::Sender<MidiMsg>, mpsc::Receiver<MidiMsg>) = mpsc::channel(4);
         let cloned_broadcast_tx = broadcast_tx.clone();
@@ -80,8 +81,7 @@ impl Device {
             // @Fixme: shouldn't unwrap
             let mut socket = TcpStream::connect(&addr).await.unwrap();
 
-            // @XXX
-            println!("Connected to device at address {addr}");
+            log::info!("Connected to device at address {addr}");
 
             let mut buf = BytesMut::new();
             let broadcast_tx = cloned_broadcast_tx;
@@ -121,7 +121,7 @@ impl Device {
         })
     }
 
-    fn usb(name: &str, in_name: &str, out_name: &str) -> Result<Self, Error> {
+    fn midi(name: &str, in_name: &str, out_name: &str) -> Result<Self, Error> {
         let (broadcast_tx, _broadcast_rx) = broadcast::channel(128); // @TestMe: is this the right capacity?
         let (tx, mut rx): (mpsc::Sender<MidiMsg>, mpsc::Receiver<MidiMsg>) = mpsc::channel(4);
         let cloned_broadcast_tx = broadcast_tx.clone();
@@ -146,7 +146,7 @@ impl Device {
             for port in input.ports().iter() {
                 // @XXX: REALLY DON'T UNWRAP
                 let name = input.port_name(port).unwrap();
-                println!("Found input port: {name}");
+                log::trace!("Found input port: {name}");
                 if name == in_name {
                     input_port = Some(port.clone());
                     break;
@@ -184,7 +184,7 @@ impl Device {
             let mut output_port = None;
             for port in output.ports().iter() {
                 let name = output.port_name(port).unwrap();
-                println!("Found output port: {name}");
+                log::trace!("Found output port: {name}");
                 if name == out_name {
                     output_port = Some(port.clone());
                     break;
@@ -198,8 +198,7 @@ impl Device {
             // @Checkme: does using "name" make sense here?
             let mut output_connection = output.connect(&output_port, &name).unwrap();
 
-            // @XXX
-            println!("Connected to device {name}");
+            log::info!("Connected to device {name}");
 
             loop {
                 let msg = rx.recv().await.unwrap(); // @Fixme: shouldn't unwrap, maybe pattern match?
@@ -231,7 +230,4 @@ pub enum Error {
 
     #[error("Couldn't find MIDI output with name: {0}")]
     CouldntFindMidiOutput(String),
-
-    #[error("Dummy error XXX")]
-    Dummy, // @XXX
 }
