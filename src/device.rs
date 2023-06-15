@@ -106,8 +106,7 @@ impl Device {
                             let _ = broadcast_tx.send(msg);
                         }
                     }
-                    msg = rx.recv() => {
-                        let msg = msg.unwrap(); // @Fixme: shouldn't unwrap, maybe pattern match?
+                    Some(msg) = rx.recv() => {
                         socket.write_all(&msg.to_midi()).await.unwrap(); // @Fixme: shouldn't unwrap
                     }
                 }
@@ -200,11 +199,8 @@ impl Device {
 
             log::info!("Connected to device {name}");
 
-            loop {
-                let msg = rx.recv().await.unwrap(); // @Fixme: shouldn't unwrap, maybe pattern match?
-
-                // @XXX: unwrap
-                output_connection.send(&msg.to_midi()).unwrap();
+            while let Some(msg) = rx.recv().await {
+                output_connection.send(&msg.to_midi()).unwrap(); // @XXX: unwrap
             }
         });
 
