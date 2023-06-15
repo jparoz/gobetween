@@ -68,8 +68,7 @@ impl Device {
     }
 
     pub async fn send(&mut self, msg: MidiMsg) -> Result<(), Error> {
-        self.tx.send(msg).await?;
-        Ok(())
+        Ok(self.tx.send(msg).await?)
     }
 
     fn tcp_midi(name: &str, addr: String) -> Result<Self, Error> {
