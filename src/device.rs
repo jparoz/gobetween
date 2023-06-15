@@ -1,13 +1,13 @@
 use std::io;
+use std::ops::Deref;
 
 use bytes::{Buf, BytesMut};
+use midi_msg::{Channel, ChannelVoiceMsg, ControlChange, MidiMsg, ParseError};
 use midir::{MidiInput, MidiOutput};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::select;
 use tokio::sync::{broadcast, mpsc};
-
-use midi_msg::{Channel, ChannelVoiceMsg, ControlChange, MidiMsg};
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct DeviceInfo {
@@ -92,19 +92,7 @@ impl Device {
                     bytes_read = socket.read_buf(&mut buf) => {
                         // @Fixme: shouldn't unwrap
                         let _bytes_read = bytes_read.unwrap();
-
-                        // @Todo @XXX: don't ignore this error, we could get stuck
-                        while let Ok((msg, len)) =
-                            MidiMsg::from_midi_with_context(&buf, &mut ctx)
-                        {
-                            // Advance the buffer by the length of the parsed MIDI message.
-                            buf.advance(len);
-
-                            // Ignore the return value;
-                            // error case is when there are no receivers,
-                            // which we don't care about.
-                            let _ = broadcast_tx.send(msg);
-                        }
+                        parse_midi_from_buf(&mut buf, &mut ctx, &broadcast_tx);
                     }
                     Some(msg) = rx.recv() => {
                         socket.write_all(&msg.to_midi()).await.unwrap(); // @Fixme: shouldn't unwrap
@@ -163,18 +151,20 @@ impl Device {
                     // @Checkme: does using "name" make sense here?
                     &name,
                     move |_timestamp, mut midi_bytes, ()| {
-                        // @Todo @XXX: don't ignore this error, we could get stuck
-                        while let Ok((msg, len)) =
-                            MidiMsg::from_midi_with_context(midi_bytes, &mut ctx)
-                        {
-                            // Advance the buffer by the length of the parsed MIDI message.
-                            midi_bytes = &midi_bytes[len..];
+                        // // @Todo @XXX: don't ignore this error, we could get stuck
+                        // while let Ok((msg, len)) =
+                        //     MidiMsg::from_midi_with_context(midi_bytes, &mut ctx)
+                        // {
+                        //     // Advance the buffer by the length of the parsed MIDI message.
+                        //     midi_bytes = &midi_bytes[len..];
 
-                            // Ignore the return value;
-                            // error case is when there are no receivers,
-                            // which we don't care about.
-                            let _ = broadcast_tx.send(msg);
-                        }
+                        //     // Ignore the return value;
+                        //     // error case is when there are no receivers,
+                        //     // which we don't care about.
+                        //     let _ = broadcast_tx.send(msg);
+                        // }
+                        // @Checkme: Delete the above commented code after testing below
+                        parse_midi_from_buf(&mut midi_bytes, &mut ctx, &broadcast_tx);
                     },
                     (),
                 )
@@ -209,6 +199,43 @@ impl Device {
             broadcast_tx,
             tx,
         })
+    }
+}
+
+/// Parses as many MIDI messages as possible from the given [`BytesMut`],
+/// advancing the buffer as needed,
+/// and logging any errors.
+fn parse_midi_from_buf<B>(
+    buf: &mut B,
+    ctx: &mut midi_msg::ReceiverContext,
+    tx: &broadcast::Sender<MidiMsg>,
+) where
+    B: Buf + Deref<Target = [u8]>,
+{
+    while buf.has_remaining() {
+        match MidiMsg::from_midi_with_context(buf, ctx) {
+            Ok((msg, len)) => {
+                // Advance the buffer by the length of the parsed MIDI message.
+                buf.advance(len);
+
+                // Ignore the return value;
+                // error case is when there are no receivers,
+                // which we don't care about.
+                let _ = tx.send(msg);
+            }
+
+            // This is okay; just means we haven't received all the bytes yet.
+            Err(ParseError::UnexpectedEnd) | Err(ParseError::NoEndOfSystemExclusiveFlag) => break,
+
+            Err(parse_error) => {
+                // @Todo: log more information about the source of the error,
+                // e.g. which Device originated the error.
+                log::error!("MIDI parse error: {parse_error}");
+
+                log::info!("Skipping byte `0x{:02X}` because of previous error", buf[0]);
+                buf.advance(1);
+            }
+        }
     }
 }
 
