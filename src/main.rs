@@ -1,14 +1,17 @@
 mod device;
+mod mapping;
 
 use device::DeviceInfo;
-use tokio::task::JoinSet;
+use mapping::Mapping;
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{builder::TypedValueParser as _, Parser};
 use serde::Deserialize;
+use tokio::task::JoinSet;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 /// Bounce MIDI commands between devices
@@ -33,6 +36,7 @@ struct Args {
 #[derive(Deserialize, Debug)]
 struct Config {
     devices: Vec<DeviceInfo>,
+    mappings: HashMap<String, Vec<Mapping>>,
 }
 
 // @Todo: proper error handling
@@ -49,6 +53,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config_file = File::open(&args.config)?;
     let config: Config = serde_yaml::from_reader(config_file)?;
+
+    log::trace!("Parsed config: {config:?}");
 
     if config.devices.is_empty() {
         log::warn!(

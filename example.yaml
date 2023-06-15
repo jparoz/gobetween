@@ -1,6 +1,8 @@
 devices:
-  - name: mock
+  - name: mock1
     midi_address: localhost:44332
+  - name: mock2
+    midi_address: localhost:44333
   # - name: FaderPort 8
   #   midi_in:  PreSonus FP8
   #   midi_out: PreSonus FP8
@@ -9,3 +11,15 @@ devices:
   #   # midi_in:  SQ - MIDI Out
   #   # midi_out: SQ - MIDI In
   #   midi_address: 192.168.1.71:51325
+
+mappings:
+  mock1:
+    - from:
+        type: NoteOn
+        note: 77
+        velocity: 12
+      to:
+        target: mock2
+        type: NoteOff
+        note: $note
+        velocity: $velocity
