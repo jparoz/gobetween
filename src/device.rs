@@ -22,7 +22,7 @@ pub enum ConnectionInfo {
     /// MIDI over TCP connection information.
     TcpMidi {
         /// The address and port of the TCP MIDI device.
-        /// This will be used by [`ToSocketAddrs`],
+        /// This will be used by [`ToSocketAddrs`](std::net::ToSocketAddrs),
         /// so should be something like `"123.456.40.13:8033"`.
         midi_address: String,
     },
