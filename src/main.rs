@@ -1,8 +1,10 @@
 mod device;
 mod mapping;
+mod midi;
+mod spec;
 
 use device::DeviceInfo;
-use mapping::Mapping;
+use mapping::{Mapping, Target};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -65,15 +67,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Connect to the specified devices
-    let mut devices = Vec::new();
+    let mut devices = HashMap::new();
     let mut join_set = JoinSet::new();
     for device_info in config.devices {
         log::info!("Connecting to device: {device_info:?}");
-        devices.push(device_info.connect(&mut join_set)?);
+        devices.insert(
+            device_info.name.clone(),
+            device_info.connect(&mut join_set)?,
+        );
+    }
+
+    for (from_name, mappings) in config.mappings {
+        for Mapping {
+            spec: from_spec,
+            target:
+                Target {
+                    name: to_name,
+                    spec: to_spec,
+                },
+        } in mappings
+        {
+            let to_tx = devices
+                .get(&to_name)
+                .ok_or_else(|| mapping::Error::DeviceNotFound(to_name.clone()))?
+                .tx
+                .clone();
+
+            let from_device = devices
+                .get_mut(&from_name)
+                .ok_or_else(|| mapping::Error::DeviceNotFound(from_name.clone()))?;
+
+            from_device.map_to(to_tx, from_spec, to_spec)?;
+        }
     }
 
     let mut streams = Vec::new();
-    for device in devices.iter() {
+    for device in devices.values() {
         let rx = device.subscribe();
         streams.push(BroadcastStream::new(rx));
     }

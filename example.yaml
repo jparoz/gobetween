@@ -16,10 +16,10 @@ mappings:
   mock1:
     - from:
         type: NoteOn
-        note: 77
-        velocity: 12
+        note: [77, 78]
+        velocity: 0-100
       to:
         target: mock2
         type: NoteOff
-        note: $note
-        velocity: $velocity
+        note: [78, 77]
+        velocity: 0-100
