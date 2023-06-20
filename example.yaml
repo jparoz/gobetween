@@ -22,4 +22,4 @@ mappings:
         target: mock2
         type: NoteOff
         note: [78, 77]
-        velocity: 0-100
+        velocity: 0 - 100
