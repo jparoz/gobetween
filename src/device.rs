@@ -4,6 +4,7 @@ use midi_msg::MidiMsg;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinSet;
 
+use crate::mapping::{FieldMap, Mapped};
 use crate::midi;
 use crate::spec::Spec;
 
@@ -49,7 +50,6 @@ impl DeviceInfo {
 }
 
 // @Todo: parameterise over the message type, e.g. Device<MidiMsg>
-#[derive(Debug)]
 pub struct Device {
     /// The name of the device. Can be anything.
     // @Todo: This could probably be a reference into the originating DeviceInfo
@@ -63,11 +63,7 @@ pub struct Device {
     pub broadcast_tx: broadcast::Sender<MidiMsg>,
 
     /// All of the mappings where this device is the "from".
-    /// Each of these closures is called on each input message;
-    /// if the closure produces a MidiMsg,
-    /// then the message is sent to the target.
-    // @Todo: make it closures
-    pub mappings: Vec<()>,
+    pub mapped: Vec<Mapped<MidiMsg>>,
 }
 
 impl Device {
@@ -77,15 +73,13 @@ impl Device {
 
     pub fn map_to(
         &mut self,
-        to_tx: mpsc::Sender<MidiMsg>,
+        tx: mpsc::Sender<MidiMsg>,
         trigger: Spec,
         target: Spec,
-    ) -> Result<(), Error> {
-        // @Todo: convert the trigger to a bunch of ranges to be checked
-        // @Todo: push a closure which maps the input trigger to the output range
-        //        (if it matches, i.e. Option<MidiMsg>)
-        // self.mappings.push((to_tx, .......));
-        todo!()
+        field_map: FieldMap,
+    ) {
+        self.mapped
+            .push(Mapped::new(trigger, target, tx, field_map));
     }
 }
 

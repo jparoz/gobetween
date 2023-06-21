@@ -84,6 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Target {
                     name: to_name,
                     spec: to_spec,
+                    field_map,
                 },
         } in mappings
         {
@@ -97,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .get_mut(&from_name)
                 .ok_or_else(|| mapping::Error::DeviceNotFound(from_name.clone()))?;
 
-            from_device.map_to(to_tx, from_spec, to_spec)?;
+            from_device.map_to(to_tx, from_spec, to_spec, field_map);
         }
     }
 

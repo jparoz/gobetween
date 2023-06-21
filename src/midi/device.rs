@@ -51,7 +51,7 @@ impl Device {
             name: name.to_string(),
             broadcast_tx,
             tx,
-            mappings: Vec::new(), // @XXX
+            mapped: Vec::new(),
         })
     }
 
@@ -137,7 +137,7 @@ impl Device {
             name: orig_name.to_string(),
             broadcast_tx,
             tx,
-            mappings: Vec::new(),
+            mapped: Vec::new(),
         })
     }
 }
