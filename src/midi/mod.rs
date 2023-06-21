@@ -1,4 +1,4 @@
 pub mod device;
 
-mod spec;
+pub mod spec;
 pub use spec::Spec;
