@@ -12,7 +12,6 @@ devices:
   #   # midi_out: SQ - MIDI In
   #   midi_address: 192.168.1.71:51325
 
-# @Todo: MIDI channels???
 mappings:
   mock1:
     # This should map:
@@ -29,10 +28,11 @@ mappings:
         velocity: 0 - 100
 
     # This should map:
-    #   NoteOn(127, 33) -> CC(25, 50)
-    #   NoteOn(  0,  0) -> CC(25,  0)
+    #   NoteOn(127, 33) [channel 0] -> CC(25, 50) [channel 3]
+    #   NoteOn(  0,  0) [channel 5] -> CC(25,  0) [channel 3]
     # Note that the velocity is ignored,
-    # and the note number is mapped to CC value
+    # the channel is ignored,
+    # and the note number is mapped to CC value.
     - from:
         type: NoteOn
         note: 0-127
@@ -41,5 +41,6 @@ mappings:
         type: ControlChange
         controller: 25
         value: 0-50
+        channel: 3
         mapping:
           note: value
