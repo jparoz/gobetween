@@ -16,7 +16,7 @@ pub trait Matches {
 
     /// Checks if the given message matches the spec,
     /// and if it does,
-    /// returns a [`Match`] describing the qualities of the match.
+    /// returns a [`Match`](Self::Match) describing the qualities of the match.
     fn matches(&self, msg: Self::Message) -> Option<Self::Match>;
 
     /// Given the qualities of a matched message,
