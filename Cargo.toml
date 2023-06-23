@@ -23,5 +23,5 @@ serde_yaml = "0.9"
 
 clap = {version = "4.3", features = ["derive"]}
 
-midi-msg = "0.4" # Also consider midly
 midir = "0.9"
+midly = "0.5.3"

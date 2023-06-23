@@ -1,25 +1,24 @@
 use std::collections::HashMap;
 
-use midi_msg::MidiMsg;
 use tokio::sync::mpsc;
 
 use crate::spec::Spec;
 
 /// A mapping that has been realised,
 /// and will be applied to incoming messages.
-pub struct Mapped<Msg> {
+pub struct Mapped<Message> {
     /// This closure is called on each input message;
-    /// if the closure produces a `Msg`,
+    /// if the closure produces a `Message`,
     /// then the message is sent to `tx`.
-    pub f: Box<dyn Fn(Msg) -> Option<Msg>>,
-    pub tx: mpsc::Sender<Msg>,
+    pub f: Box<dyn Fn(Message) -> Option<Message>>,
+    pub tx: mpsc::Sender<Message>,
 }
 
-impl Mapped<MidiMsg> {
+impl<Message> Mapped<Message> {
     pub fn new(
         trigger: Spec,
         target: Spec,
-        tx: mpsc::Sender<MidiMsg>,
+        tx: mpsc::Sender<Message>,
         field_map: FieldMap,
     ) -> Self {
         Mapped {

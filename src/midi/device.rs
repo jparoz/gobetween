@@ -1,9 +1,7 @@
-use std::ops::Deref;
-
-use bytes::{Buf, BytesMut};
+use bytes::BytesMut;
 use futures::FutureExt;
-use midi_msg::{MidiMsg, ParseError};
 use midir::{MidiInput, MidiOutput};
+use midly::{live::LiveEvent, stream::MidiStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc};
@@ -11,7 +9,7 @@ use tokio::task::JoinSet;
 
 use crate::device::{self, Device};
 
-impl Device {
+impl Device<LiveEvent<'static>> {
     /// Connects to a TCP over MIDI device.
     pub fn tcp_midi(
         join_set: &mut JoinSet<Result<String, device::Error>>,
@@ -19,7 +17,7 @@ impl Device {
         addr: String,
     ) -> Result<Self, device::Error> {
         let (broadcast_tx, _broadcast_rx) = broadcast::channel(128); // @TestMe: is this the right capacity?
-        let (tx, mut rx): (mpsc::Sender<MidiMsg>, mpsc::Receiver<MidiMsg>) = mpsc::channel(4);
+        let (tx, mut rx): (mpsc::Sender<LiveEvent<'_>>, mpsc::Receiver<_>) = mpsc::channel(4);
         let cloned_broadcast_tx = broadcast_tx.clone();
 
         join_set.spawn(async move {
@@ -29,16 +27,30 @@ impl Device {
 
             let mut buf = BytesMut::new();
             let broadcast_tx = cloned_broadcast_tx;
-            let mut ctx = midi_msg::ReceiverContext::new();
+            let mut stream = MidiStream::new();
 
             loop {
                 tokio::select! {
                     bytes_read = socket.read_buf(&mut buf) => {
                         let _bytes_read = bytes_read?;
-                        parse_midi_from_buf(&mut buf, &mut ctx, &broadcast_tx);
+                        stream.feed(&buf, |live_event| {
+                            // Ignore the return value;
+                            // error case is when there are no receivers,
+                            // which we don't care about.
+                            let _ = broadcast_tx.send(live_event.to_static());
+                        });
+
+                        // @Note: this relies on the guarantee from BytesMut
+                        // that the memory is contiguous.
+                        // Specifically,
+                        // that BytesMut::Deref<[u8]>
+                        // returns all of the contents of the buffer.
+                        buf.clear();
                     }
-                    Some(msg) = rx.recv() => {
-                        socket.write_all(&msg.to_midi()).await?;
+                    Some(live_event) = rx.recv() => {
+                        live_event.write_std(buf.as_mut())?;
+                        socket.write_all(&buf).await?;
+                        buf.clear();
                     }
                     else => { break }
                 }
@@ -64,7 +76,7 @@ impl Device {
     ) -> Result<Self, device::Error> {
         // @TestMe: is this the right capacity?
         let (broadcast_tx, _broadcast_rx) = broadcast::channel(128);
-        let (tx, mut rx): (mpsc::Sender<MidiMsg>, mpsc::Receiver<MidiMsg>) = mpsc::channel(4);
+        let (tx, mut rx): (mpsc::Sender<LiveEvent<'_>>, mpsc::Receiver<_>) = mpsc::channel(4);
         let cloned_broadcast_tx = broadcast_tx.clone();
 
         let orig_name = name;
@@ -77,7 +89,7 @@ impl Device {
         join_set.spawn(
             async move {
                 let broadcast_tx = cloned_broadcast_tx;
-                let mut ctx = midi_msg::ReceiverContext::new();
+                let mut stream = MidiStream::new();
 
                 // @Checkme: does using "name" make sense here?
                 let input = MidiInput::new(&name)?;
@@ -100,8 +112,13 @@ impl Device {
                     &input_port,
                     // @Checkme: does using "name" make sense here?
                     &name,
-                    move |_timestamp, mut midi_bytes, ()| {
-                        parse_midi_from_buf(&mut midi_bytes, &mut ctx, &broadcast_tx);
+                    move |_timestamp, midi_bytes, ()| {
+                        stream.feed(midi_bytes, |live_event| {
+                            // Ignore the return value;
+                            // error case is when there are no receivers,
+                            // which we don't care about.
+                            let _ = broadcast_tx.send(live_event.to_static());
+                        })
                     },
                     (),
                 )?;
@@ -124,8 +141,11 @@ impl Device {
 
                 log::info!("Connected to device {name}");
 
-                while let Some(msg) = rx.recv().await {
-                    output_connection.send(&msg.to_midi())?;
+                let mut buf = Vec::new();
+                while let Some(live_event) = rx.recv().await {
+                    live_event.write_std::<&mut [u8]>(buf.as_mut())?;
+                    output_connection.send(&buf)?;
+                    buf.clear();
                 }
 
                 Ok("MIDI device task finished".to_string())
@@ -142,47 +162,13 @@ impl Device {
     }
 }
 
-/// Parses as many MIDI messages as possible from the given [`BytesMut`],
-/// advancing the buffer as needed,
-/// and logging any errors.
-fn parse_midi_from_buf<B>(
-    buf: &mut B,
-    ctx: &mut midi_msg::ReceiverContext,
-    tx: &broadcast::Sender<MidiMsg>,
-) where
-    B: Buf + Deref<Target = [u8]>,
-{
-    while buf.has_remaining() {
-        match MidiMsg::from_midi_with_context(buf, ctx) {
-            Ok((msg, len)) => {
-                // Advance the buffer by the length of the parsed MIDI message.
-                buf.advance(len);
-
-                // Ignore the return value;
-                // error case is when there are no receivers,
-                // which we don't care about.
-                let _ = tx.send(msg);
-            }
-
-            // This is okay; just means we haven't received all the bytes yet.
-            Err(ParseError::UnexpectedEnd) | Err(ParseError::NoEndOfSystemExclusiveFlag) => break,
-
-            Err(parse_error) => {
-                // @Todo: log more information about the source of the error,
-                // e.g. which Device originated the error.
-                log::error!("MIDI parse error: {parse_error}");
-
-                log::info!("Skipping byte `0x{:02X}` because of previous error", buf[0]);
-                buf.advance(1);
-            }
-        }
-    }
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("IO error: {0}")]
+    IO(#[from] std::io::Error),
+
     #[error("Channel send error, couldn't send MIDI message {0:?}")]
-    Send(#[from] tokio::sync::mpsc::error::SendError<MidiMsg>),
+    Send(#[from] tokio::sync::mpsc::error::SendError<LiveEvent<'static>>),
 
     #[error("MIDI init error: {0}")]
     MidirInit(#[from] midir::InitError),

@@ -1,6 +1,6 @@
 use std::io;
 
-use midi_msg::MidiMsg;
+use midly::live::LiveEvent;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinSet;
 
@@ -38,7 +38,10 @@ pub enum ConnectionInfo {
 }
 
 impl DeviceInfo {
-    pub fn connect(&self, join_set: &mut JoinSet<Result<String, Error>>) -> Result<Device, Error> {
+    pub fn connect(
+        &self,
+        join_set: &mut JoinSet<Result<String, Error>>,
+    ) -> Result<Device<LiveEvent<'static>>, Error> {
         use ConnectionInfo::*;
         match &self.connection_info {
             TcpMidi { midi_address } => {
@@ -49,31 +52,30 @@ impl DeviceInfo {
     }
 }
 
-// @Todo: parameterise over the message type, e.g. Device<MidiMsg>
-pub struct Device {
+pub struct Device<Message> {
     /// The name of the device. Can be anything.
     // @Todo: This could probably be a reference into the originating DeviceInfo
     pub name: String,
 
     /// This is the sender to which we send MIDI devices for this device.
-    pub tx: mpsc::Sender<MidiMsg>,
+    pub tx: mpsc::Sender<Message>,
 
     /// This is a clone of the sender moved to the main device callback.
     /// Use [`Device::subscribe`] to receive MIDI messages from this device.
-    pub broadcast_tx: broadcast::Sender<MidiMsg>,
+    pub broadcast_tx: broadcast::Sender<Message>,
 
     /// All of the mappings where this device is the "from".
-    pub mapped: Vec<Mapped<MidiMsg>>,
+    pub mapped: Vec<Mapped<Message>>,
 }
 
-impl Device {
-    pub fn subscribe(&self) -> broadcast::Receiver<MidiMsg> {
+impl<Message> Device<Message> {
+    pub fn subscribe(&self) -> broadcast::Receiver<Message> {
         self.broadcast_tx.subscribe()
     }
 
     pub fn map_to(
         &mut self,
-        tx: mpsc::Sender<MidiMsg>,
+        tx: mpsc::Sender<Message>,
         trigger: Spec,
         target: Spec,
         field_map: FieldMap,
