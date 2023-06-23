@@ -21,7 +21,7 @@ pub trait Matches {
 
     /// Given the qualities of a matched message,
     /// generates the appropriate output message.
-    fn generate(&self, matched: Self::Match) -> Self::Message;
+    fn generate(&self, matched: Self::Match) -> Option<Self::Message>;
 }
 
 /// An inclusive range between two numbers,
@@ -86,6 +86,24 @@ impl Number {
                 Some(NumberMatch::Range((b - a) / (n - a)))
             }
             _ => None,
+        }
+    }
+
+    pub fn generate(&self, matched: NumberMatch) -> Option<u32> {
+        match (self, matched) {
+            (Number::Any, NumberMatch::Value(val)) => Some(val),
+            (Number::Any, NumberMatch::Range(_)) => None,
+
+            (Number::Value(val), NumberMatch::Value(_)) => Some(*val),
+            (Number::Value(_), NumberMatch::Range(_)) => None,
+
+            (Number::Range(Range(a, b)), NumberMatch::Range(position)) => {
+                let a = *a as f64;
+                let b = *b as f64;
+                let res = a + ((b-a) * position);
+                Some(res.round() as u32)
+            }
+            (Number::Range(_), NumberMatch::Value(_)) => None,
         }
     }
 }

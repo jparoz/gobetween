@@ -25,3 +25,4 @@ clap = {version = "4.3", features = ["derive"]}
 
 midir = "0.9"
 midly = "0.5.3"
+try_match = "0.4.1"

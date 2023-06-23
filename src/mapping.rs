@@ -23,9 +23,19 @@ impl<Message> Mapped<Message> {
     ) -> Self {
         Mapped {
             f: Box::new(move |msg| {
+                // @Note @Fixme:
+                // The following can't really work,
+                // because currently we have a spec::Spec,
+                // which contains something which implements Matches,
+                // but doesn't implement Matches itself.
+                // Likely we need to move away from holding a Spec,
+                // and instead pass around an impl Matches or something like that.
+                // It'll take some figuring out.
+
                 // @Todo:
                 // - use Spec::matches to find if the message should be mapped;
-                // - use the return value of Spec::matches to make a mapped output message.
+                // - use field_map to convert the Match to the proper variant
+                // - use the new Match to generate a mapped output message.
                 let _trigger = &trigger;
                 let _target = &target;
                 let _field_map = &field_map;
