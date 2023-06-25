@@ -106,6 +106,11 @@ impl Number {
             (Number::Range(_), NumberMatch::Value(_)) => None,
         }
     }
+
+    /// Returns the desired default when no `Number` is specified.
+    pub fn default_vec() -> Vec<Number> {
+        vec![Number::Any]
+    }
 }
 
 /// Tries to match all the [`Number`]s in the `Vec`,

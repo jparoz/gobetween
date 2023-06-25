@@ -9,70 +9,70 @@ use crate::spec::{self, Matches};
 #[serde(tag = "type")]
 pub enum Spec {
     NoteOn {
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         channel: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         note: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         velocity: Vec<spec::Number>,
     },
     NoteOff {
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         channel: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         note: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         velocity: Vec<spec::Number>,
     },
     ControlChange {
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         channel: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         controller: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         value: Vec<spec::Number>,
     },
     ProgramChange {
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         channel: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         program: Vec<spec::Number>,
     },
     PolyPressure {
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         channel: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         note: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         pressure: Vec<spec::Number>,
     },
     ChannelPressure {
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         channel: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         pressure: Vec<spec::Number>,
     },
     PitchBend {
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         channel: Vec<spec::Number>,
-        #[serde(default)]
+        #[serde(default = "spec::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
         bend: Vec<spec::Number>,
     },
