@@ -113,6 +113,13 @@ impl Number {
     }
 }
 
+// @Todo @Cleanup:
+// This whole manual index-keeping business is annoying.
+// It would be better to somehow more closely pair the input->output mapping,
+// so that we can directly match each pair of `NumberMatch`es,
+// to obviate this function in favour of e.g. itertools::zip_longest.
+// (see also https://docs.rs/itertools/latest/itertools/enum.EitherOrBoth.html#method.or_default)
+//
 /// Tries to match all the [`Number`]s in the `Vec`,
 /// and returns the index and [`NumberMatch`] of the first match.
 pub fn matches_many<'a, I>(iter: I, n: u32) -> Option<(u32, NumberMatch)>
