@@ -2,87 +2,87 @@ use midly::{live::LiveEvent, MidiMessage};
 use serde_with::{serde_as, OneOrMany};
 use try_match::match_ok;
 
-use crate::spec::{self, Matches};
+use crate::message_template::{self, Matches};
 
 #[serde_as]
 #[derive(serde::Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum Spec {
+pub enum MessageTemplate {
     NoteOn {
-        #[serde(default = "spec::Number::default_vec")]
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        channel: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        note: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        note: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        velocity: Vec<spec::Number>,
+        velocity: Vec<message_template::Number>,
     },
     NoteOff {
-        #[serde(default = "spec::Number::default_vec")]
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        channel: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        note: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        note: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        velocity: Vec<spec::Number>,
+        velocity: Vec<message_template::Number>,
     },
     ControlChange {
-        #[serde(default = "spec::Number::default_vec")]
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        channel: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        controller: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        controller: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        value: Vec<spec::Number>,
+        value: Vec<message_template::Number>,
     },
     ProgramChange {
-        #[serde(default = "spec::Number::default_vec")]
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        channel: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        program: Vec<spec::Number>,
+        program: Vec<message_template::Number>,
     },
     PolyPressure {
-        #[serde(default = "spec::Number::default_vec")]
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        channel: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        note: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        note: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        pressure: Vec<spec::Number>,
+        pressure: Vec<message_template::Number>,
     },
     ChannelPressure {
-        #[serde(default = "spec::Number::default_vec")]
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        channel: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        pressure: Vec<spec::Number>,
+        pressure: Vec<message_template::Number>,
     },
     PitchBend {
-        #[serde(default = "spec::Number::default_vec")]
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<spec::Number>,
-        #[serde(default = "spec::Number::default_vec")]
+        channel: Vec<message_template::Number>,
+        #[serde(default = "message_template::Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        bend: Vec<spec::Number>,
+        bend: Vec<message_template::Number>,
     },
 }
 
-impl Matches for Spec {
+impl Matches for MessageTemplate {
     type Message = LiveEvent<'static>;
     type Match = Match;
 
-    /// Checks if the given message matches the spec,
+    /// Checks if the given message matches the template,
     /// and if it does,
     /// returns a [`Match`] describing the qualities of the match.
     fn matches(&self, live_event: LiveEvent<'static>) -> Option<Match> {
@@ -96,17 +96,19 @@ impl Matches for Spec {
 
         match message {
             MidiMessage::NoteOn { key, vel } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::NoteOn {
+                    MessageTemplate::NoteOn {
                         channel,
                         note,
                         velocity
                     }
                 )?;
-                let channel = spec::matches_many(spec.channel, channel.as_int() as u32)?;
-                let note = spec::matches_many(spec.note, key.as_int() as u32)?;
-                let velocity = spec::matches_many(spec.velocity, vel.as_int() as u32)?;
+                let channel =
+                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
+                let note = message_template::matches_many(template.note, key.as_int() as u32)?;
+                let velocity =
+                    message_template::matches_many(template.velocity, vel.as_int() as u32)?;
                 Some(Match::NoteOn {
                     channel,
                     note,
@@ -115,17 +117,19 @@ impl Matches for Spec {
             }
 
             MidiMessage::NoteOff { key, vel } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::NoteOff {
+                    MessageTemplate::NoteOff {
                         channel,
                         note,
                         velocity
                     }
                 )?;
-                let channel = spec::matches_many(spec.channel, channel.as_int() as u32)?;
-                let note = spec::matches_many(spec.note, key.as_int() as u32)?;
-                let velocity = spec::matches_many(spec.velocity, vel.as_int() as u32)?;
+                let channel =
+                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
+                let note = message_template::matches_many(template.note, key.as_int() as u32)?;
+                let velocity =
+                    message_template::matches_many(template.velocity, vel.as_int() as u32)?;
                 Some(Match::NoteOff {
                     channel,
                     note,
@@ -134,17 +138,19 @@ impl Matches for Spec {
             }
 
             MidiMessage::Aftertouch { key, vel } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::PolyPressure {
+                    MessageTemplate::PolyPressure {
                         channel,
                         note,
                         pressure
                     }
                 )?;
-                let channel = spec::matches_many(spec.channel, channel.as_int() as u32)?;
-                let note = spec::matches_many(spec.note, key.as_int() as u32)?;
-                let pressure = spec::matches_many(spec.pressure, vel.as_int() as u32)?;
+                let channel =
+                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
+                let note = message_template::matches_many(template.note, key.as_int() as u32)?;
+                let pressure =
+                    message_template::matches_many(template.pressure, vel.as_int() as u32)?;
                 Some(Match::PolyPressure {
                     channel,
                     note,
@@ -153,17 +159,21 @@ impl Matches for Spec {
             }
 
             MidiMessage::Controller { controller, value } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::ControlChange {
+                    MessageTemplate::ControlChange {
                         channel,
                         controller,
                         value
                     }
                 )?;
-                let channel = spec::matches_many(spec.channel, channel.as_int() as u32)?;
-                let controller = spec::matches_many(spec.controller, controller.as_int() as u32)?;
-                let value = spec::matches_many(spec.value, value.as_int() as u32)?;
+                let channel =
+                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
+                let controller = message_template::matches_many(
+                    template.controller,
+                    controller.as_int() as u32,
+                )?;
+                let value = message_template::matches_many(template.value, value.as_int() as u32)?;
                 Some(Match::ControlChange {
                     channel,
                     controller,
@@ -172,23 +182,30 @@ impl Matches for Spec {
             }
 
             MidiMessage::ProgramChange { program } => {
-                let spec = match_ok!(self, Spec::ProgramChange { channel, program })?;
-                let channel = spec::matches_many(spec.channel, channel.as_int() as u32)?;
-                let program = spec::matches_many(spec.program, program.as_int() as u32)?;
+                let template =
+                    match_ok!(self, MessageTemplate::ProgramChange { channel, program })?;
+                let channel =
+                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
+                let program =
+                    message_template::matches_many(template.program, program.as_int() as u32)?;
                 Some(Match::ProgramChange { channel, program })
             }
 
             MidiMessage::ChannelAftertouch { vel } => {
-                let spec = match_ok!(self, Spec::ChannelPressure { channel, pressure })?;
-                let channel = spec::matches_many(spec.channel, channel.as_int() as u32)?;
-                let pressure = spec::matches_many(spec.pressure, vel.as_int() as u32)?;
+                let template =
+                    match_ok!(self, MessageTemplate::ChannelPressure { channel, pressure })?;
+                let channel =
+                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
+                let pressure =
+                    message_template::matches_many(template.pressure, vel.as_int() as u32)?;
                 Some(Match::ChannelPressure { channel, pressure })
             }
 
             MidiMessage::PitchBend { bend } => {
-                let spec = match_ok!(self, Spec::PitchBend { channel, bend })?;
-                let channel = spec::matches_many(spec.channel, channel.as_int() as u32)?;
-                let bend = spec::matches_many(spec.bend, bend.0.as_int() as u32)?;
+                let template = match_ok!(self, MessageTemplate::PitchBend { channel, bend })?;
+                let channel =
+                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
+                let bend = message_template::matches_many(template.bend, bend.0.as_int() as u32)?;
                 Some(Match::PitchBend { channel, bend })
             }
         }
@@ -203,21 +220,21 @@ impl Matches for Spec {
                 note: (note_ix, note_match),
                 velocity: (velocity_ix, velocity_match),
             } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::NoteOn {
+                    MessageTemplate::NoteOn {
                         channel,
                         note,
                         velocity
                     }
                 )?;
 
-                let channel = spec
+                let channel = template
                     .channel
                     .get(channel_ix as usize)?
                     .generate(channel_match)?;
-                let key = spec.note.get(note_ix as usize)?.generate(note_match)?;
-                let vel = spec
+                let key = template.note.get(note_ix as usize)?.generate(note_match)?;
+                let vel = template
                     .velocity
                     .get(velocity_ix as usize)?
                     .generate(velocity_match)?;
@@ -236,21 +253,21 @@ impl Matches for Spec {
                 note: (note_ix, note_match),
                 velocity: (velocity_ix, velocity_match),
             } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::NoteOff {
+                    MessageTemplate::NoteOff {
                         channel,
                         note,
                         velocity
                     }
                 )?;
 
-                let channel = spec
+                let channel = template
                     .channel
                     .get(channel_ix as usize)?
                     .generate(channel_match)?;
-                let key = spec.note.get(note_ix as usize)?.generate(note_match)?;
-                let vel = spec
+                let key = template.note.get(note_ix as usize)?.generate(note_match)?;
+                let vel = template
                     .velocity
                     .get(velocity_ix as usize)?
                     .generate(velocity_match)?;
@@ -269,24 +286,27 @@ impl Matches for Spec {
                 controller: (controller_ix, controller_match),
                 value: (value_ix, value_match),
             } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::ControlChange {
+                    MessageTemplate::ControlChange {
                         channel,
                         controller,
                         value
                     }
                 )?;
 
-                let channel = spec
+                let channel = template
                     .channel
                     .get(channel_ix as usize)?
                     .generate(channel_match)?;
-                let controller = spec
+                let controller = template
                     .controller
                     .get(controller_ix as usize)?
                     .generate(controller_match)?;
-                let value = spec.value.get(value_ix as usize)?.generate(value_match)?;
+                let value = template
+                    .value
+                    .get(value_ix as usize)?
+                    .generate(value_match)?;
 
                 Some(LiveEvent::Midi {
                     channel: (channel as u8).into(),
@@ -302,21 +322,21 @@ impl Matches for Spec {
                 note: (note_ix, note_match),
                 pressure: (pressure_ix, pressure_match),
             } => {
-                let spec = match_ok!(
+                let template = match_ok!(
                     self,
-                    Spec::PolyPressure {
+                    MessageTemplate::PolyPressure {
                         channel,
                         note,
                         pressure
                     }
                 )?;
 
-                let channel = spec
+                let channel = template
                     .channel
                     .get(channel_ix as usize)?
                     .generate(channel_match)?;
-                let key = spec.note.get(note_ix as usize)?.generate(note_match)?;
-                let vel = spec
+                let key = template.note.get(note_ix as usize)?.generate(note_match)?;
+                let vel = template
                     .pressure
                     .get(pressure_ix as usize)?
                     .generate(pressure_match)?;
@@ -334,13 +354,14 @@ impl Matches for Spec {
                 channel: (channel_ix, channel_match),
                 program: (program_ix, program_match),
             } => {
-                let spec = match_ok!(self, Spec::ProgramChange { channel, program })?;
+                let template =
+                    match_ok!(self, MessageTemplate::ProgramChange { channel, program })?;
 
-                let channel = spec
+                let channel = template
                     .channel
                     .get(channel_ix as usize)?
                     .generate(channel_match)?;
-                let program = spec
+                let program = template
                     .program
                     .get(program_ix as usize)?
                     .generate(program_match)?;
@@ -357,13 +378,14 @@ impl Matches for Spec {
                 channel: (channel_ix, channel_match),
                 pressure: (pressure_ix, pressure_match),
             } => {
-                let spec = match_ok!(self, Spec::ChannelPressure { channel, pressure })?;
+                let template =
+                    match_ok!(self, MessageTemplate::ChannelPressure { channel, pressure })?;
 
-                let channel = spec
+                let channel = template
                     .channel
                     .get(channel_ix as usize)?
                     .generate(channel_match)?;
-                let vel = spec
+                let vel = template
                     .pressure
                     .get(pressure_ix as usize)?
                     .generate(pressure_match)?;
@@ -380,13 +402,13 @@ impl Matches for Spec {
                 channel: (channel_ix, channel_match),
                 bend: (bend_ix, bend_match),
             } => {
-                let spec = match_ok!(self, Spec::PitchBend { channel, bend })?;
+                let template = match_ok!(self, MessageTemplate::PitchBend { channel, bend })?;
 
-                let channel = spec
+                let channel = template
                     .channel
                     .get(channel_ix as usize)?
                     .generate(channel_match)?;
-                let bend = spec.bend.get(bend_ix as usize)?.generate(bend_match)?;
+                let bend = template.bend.get(bend_ix as usize)?.generate(bend_match)?;
 
                 Some(LiveEvent::Midi {
                     channel: (channel as u8).into(),
@@ -399,42 +421,42 @@ impl Matches for Spec {
     }
 }
 
-/// Contains the information returned when a MIDI message is matched against a [`Spec`].
+/// Contains the information returned when a MIDI message is matched against a [`MessageTemplate`].
 /// Each field contains a tuple of
-/// the index of the matched value in the `Spec`'s `Vec`,
-/// and the [`NumberMatch`](spec::NumberMatch) containing info about the matched value.
+/// the index of the matched value in the `MessageTemplate`'s `Vec`,
+/// and the [`NumberMatch`](message_template::NumberMatch) containing info about the matched value.
 #[derive(Debug, Clone)]
 pub enum Match {
     NoteOn {
-        channel: (u32, spec::NumberMatch),
-        note: (u32, spec::NumberMatch),
-        velocity: (u32, spec::NumberMatch),
+        channel: (u32, message_template::NumberMatch),
+        note: (u32, message_template::NumberMatch),
+        velocity: (u32, message_template::NumberMatch),
     },
     NoteOff {
-        channel: (u32, spec::NumberMatch),
-        note: (u32, spec::NumberMatch),
-        velocity: (u32, spec::NumberMatch),
+        channel: (u32, message_template::NumberMatch),
+        note: (u32, message_template::NumberMatch),
+        velocity: (u32, message_template::NumberMatch),
     },
     ControlChange {
-        channel: (u32, spec::NumberMatch),
-        controller: (u32, spec::NumberMatch),
-        value: (u32, spec::NumberMatch),
+        channel: (u32, message_template::NumberMatch),
+        controller: (u32, message_template::NumberMatch),
+        value: (u32, message_template::NumberMatch),
     },
     ProgramChange {
-        channel: (u32, spec::NumberMatch),
-        program: (u32, spec::NumberMatch),
+        channel: (u32, message_template::NumberMatch),
+        program: (u32, message_template::NumberMatch),
     },
     PolyPressure {
-        channel: (u32, spec::NumberMatch),
-        note: (u32, spec::NumberMatch),
-        pressure: (u32, spec::NumberMatch),
+        channel: (u32, message_template::NumberMatch),
+        note: (u32, message_template::NumberMatch),
+        pressure: (u32, message_template::NumberMatch),
     },
     ChannelPressure {
-        channel: (u32, spec::NumberMatch),
-        pressure: (u32, spec::NumberMatch),
+        channel: (u32, message_template::NumberMatch),
+        pressure: (u32, message_template::NumberMatch),
     },
     PitchBend {
-        channel: (u32, spec::NumberMatch),
-        bend: (u32, spec::NumberMatch),
+        channel: (u32, message_template::NumberMatch),
+        bend: (u32, message_template::NumberMatch),
     },
 }

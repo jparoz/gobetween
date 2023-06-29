@@ -6,7 +6,7 @@ use tokio::task::JoinSet;
 
 use crate::mapping::{FieldMap, Mapped};
 use crate::midi;
-use crate::spec::Spec;
+use crate::message_template::MessageTemplate;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct DeviceInfo {
@@ -76,8 +76,8 @@ impl<Message> Device<Message> {
     pub fn map_to(
         &mut self,
         tx: mpsc::Sender<Message>,
-        trigger: Spec,
-        target: Spec,
+        trigger: MessageTemplate,
+        target: MessageTemplate,
         field_map: FieldMap,
     ) {
         self.mapped

@@ -6,15 +6,15 @@ use crate::midi;
 
 #[derive(serde::Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum Spec {
-    Midi(midi::Spec),
+pub enum MessageTemplate {
+    Midi(midi::MessageTemplate),
 }
 
 pub trait Matches {
     type Message;
     type Match;
 
-    /// Checks if the given message matches the spec,
+    /// Checks if the given message matches the template,
     /// and if it does,
     /// returns a [`Match`](Self::Match) describing the qualities of the match.
     fn matches(&self, msg: Self::Message) -> Option<Self::Match>;
@@ -100,7 +100,7 @@ impl Number {
             (Number::Range(Range(a, b)), NumberMatch::Range(position)) => {
                 let a = *a as f64;
                 let b = *b as f64;
-                let res = a + ((b-a) * position);
+                let res = a + ((b - a) * position);
                 Some(res.round() as u32)
             }
             (Number::Range(_), NumberMatch::Value(_)) => None,

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::mpsc;
 
-use crate::spec::Spec;
+use crate::message_template::MessageTemplate;
 
 /// A mapping that has been realised,
 /// and will be applied to incoming messages.
@@ -16,8 +16,8 @@ pub struct Mapped<Message> {
 
 impl<Message> Mapped<Message> {
     pub fn new(
-        trigger: Spec,
-        target: Spec,
+        trigger: MessageTemplate,
+        target: MessageTemplate,
         tx: mpsc::Sender<Message>,
         field_map: FieldMap,
     ) -> Self {
@@ -25,15 +25,15 @@ impl<Message> Mapped<Message> {
             f: Box::new(move |msg| {
                 // @Note @Fixme:
                 // The following can't really work,
-                // because currently we have a spec::Spec,
+                // because currently we have a message_template::MessageTemplate,
                 // which contains something which implements Matches,
                 // but doesn't implement Matches itself.
-                // Likely we need to move away from holding a Spec,
+                // Likely we need to move away from holding a MessageTemplate,
                 // and instead pass around an impl Matches or something like that.
                 // It'll take some figuring out.
 
                 // @Todo:
-                // - use Spec::matches to find if the message should be mapped;
+                // - use MessageTemplate::matches to find if the message should be mapped;
                 // - use field_map to convert the Match to the proper variant
                 // - use the new Match to generate a mapped output message.
                 let _trigger = &trigger;
@@ -49,7 +49,7 @@ impl<Message> Mapped<Message> {
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct Mapping {
     #[serde(rename = "from")]
-    pub spec: Spec,
+    pub message_template: MessageTemplate,
 
     #[serde(rename = "to")]
     pub target: Target,
@@ -65,7 +65,7 @@ pub struct Target {
     pub field_map: FieldMap,
 
     #[serde(flatten)]
-    pub spec: Spec,
+    pub message_template: MessageTemplate,
 }
 
 // @Todo: is this the right type? Represents a message field name such as note, controller, etc.

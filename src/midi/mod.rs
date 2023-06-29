@@ -1,4 +1,4 @@
 pub mod device;
 
-pub mod spec;
-pub use spec::Spec;
+pub mod message_template;
+pub use message_template::MessageTemplate;

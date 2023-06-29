@@ -1,7 +1,7 @@
 mod device;
 mod mapping;
+mod message_template;
 mod midi;
-mod spec;
 
 use device::DeviceInfo;
 use mapping::{Mapping, Target};
@@ -79,11 +79,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (from_name, mappings) in config.mappings {
         for Mapping {
-            spec: from_spec,
+            message_template: from_template,
             target:
                 Target {
                     name: to_name,
-                    spec: to_spec,
+                    message_template: to_template,
                     field_map,
                 },
         } in mappings
@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .get_mut(&from_name)
                 .ok_or_else(|| mapping::Error::DeviceNotFound(from_name.clone()))?;
 
-            from_device.map_to(to_tx, from_spec, to_spec, field_map);
+            from_device.map_to(to_tx, from_template, to_template, field_map);
         }
     }
 
