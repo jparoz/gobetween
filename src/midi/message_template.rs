@@ -3,8 +3,9 @@ use serde_with::{serde_as, OneOrMany};
 use try_match::match_ok;
 
 use crate::{
-    mapping::Match,
+    config::Number,
     message_template::{self, Template},
+    transformer::Match,
 };
 
 #[serde_as]
@@ -12,72 +13,72 @@ use crate::{
 #[serde(tag = "type")]
 pub enum MessageTemplate {
     NoteOn {
-        #[serde(default = "message_template::Number::default_vec")]
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        channel: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        note: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        note: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        velocity: Vec<message_template::Number>,
+        velocity: Vec<Number>,
     },
     NoteOff {
-        #[serde(default = "message_template::Number::default_vec")]
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        channel: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        note: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        note: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        velocity: Vec<message_template::Number>,
+        velocity: Vec<Number>,
     },
     ControlChange {
-        #[serde(default = "message_template::Number::default_vec")]
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        channel: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        controller: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        controller: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        value: Vec<message_template::Number>,
+        value: Vec<Number>,
     },
     ProgramChange {
-        #[serde(default = "message_template::Number::default_vec")]
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        channel: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        program: Vec<message_template::Number>,
+        program: Vec<Number>,
     },
     PolyPressure {
-        #[serde(default = "message_template::Number::default_vec")]
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        channel: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        note: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        note: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        pressure: Vec<message_template::Number>,
+        pressure: Vec<Number>,
     },
     ChannelPressure {
-        #[serde(default = "message_template::Number::default_vec")]
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        channel: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        pressure: Vec<message_template::Number>,
+        pressure: Vec<Number>,
     },
     PitchBend {
-        #[serde(default = "message_template::Number::default_vec")]
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        channel: Vec<message_template::Number>,
-        #[serde(default = "message_template::Number::default_vec")]
+        channel: Vec<Number>,
+        #[serde(default = "Number::default_vec")]
         #[serde_as(as = "OneOrMany<_>")]
-        bend: Vec<message_template::Number>,
+        bend: Vec<Number>,
     },
 }
 

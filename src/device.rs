@@ -4,36 +4,10 @@ use midly::live::LiveEvent;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinSet;
 
-use crate::midi;
-
-#[derive(Debug, Clone, serde::Deserialize)]
-pub struct DeviceInfo {
-    /// The name of the device. Can be anything.
-    pub name: String,
-
-    #[serde(flatten)]
-    pub connection_info: ConnectionInfo,
-}
-
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(untagged)]
-pub enum ConnectionInfo {
-    /// MIDI over TCP connection information.
-    TcpMidi {
-        /// The address and port of the TCP MIDI device.
-        /// This will be used by [`ToSocketAddrs`](std::net::ToSocketAddrs),
-        /// so should be something like `"123.456.40.13:8033"`.
-        midi_address: String,
-    },
-
-    /// MIDI connection information.
-    Midi {
-        /// The name of the MIDI input device.
-        midi_in: String,
-        /// The name of the MIDI output device.
-        midi_out: String,
-    },
-}
+use crate::{
+    config::{ConnectionInfo, DeviceInfo},
+    midi,
+};
 
 impl DeviceInfo {
     pub fn connect(

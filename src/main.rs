@@ -1,10 +1,11 @@
+mod config;
 mod device;
-mod mapping;
 mod message_template;
 mod midi;
+mod transformer;
 
-use device::DeviceInfo;
-use mapping::{Mapping, Target, Transformer};
+use config::{Config, Mapping, Target};
+use transformer::Transformer;
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -12,7 +13,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{builder::TypedValueParser as _, Parser};
-use serde::Deserialize;
 use tokio::task::JoinSet;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
@@ -32,13 +32,6 @@ struct Args {
                 .map(|s| log::LevelFilter::from_str(&s).unwrap()),
         )]
     log: log::LevelFilter,
-}
-
-// @Todo: move this to its own module, maybe along with Args
-#[derive(Deserialize, Debug)]
-struct Config {
-    devices: Vec<DeviceInfo>,
-    mappings: HashMap<String, Vec<Mapping>>,
 }
 
 // @Todo: proper error handling
@@ -80,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (from_name, mappings) in config.mappings {
         let from_device = devices
             .get(&from_name)
-            .ok_or_else(|| mapping::Error::DeviceNotFound(from_name.clone()))?;
+            .ok_or_else(|| config::Error::DeviceNotFound(from_name.clone()))?;
 
         for Mapping {
             message_template: from_template,
@@ -94,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             let to_tx = devices
                 .get(&to_name)
-                .ok_or_else(|| mapping::Error::DeviceNotFound(to_name.clone()))?
+                .ok_or_else(|| config::Error::DeviceNotFound(to_name.clone()))?
                 .tx
                 .clone();
             let mut from_tx = from_device.subscribe();
