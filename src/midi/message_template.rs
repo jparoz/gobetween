@@ -2,7 +2,10 @@ use midly::{live::LiveEvent, MidiMessage};
 use serde_with::{serde_as, OneOrMany};
 use try_match::match_ok;
 
-use crate::message_template::{self, Matches};
+use crate::{
+    mapping::Match,
+    message_template::{self, Template},
+};
 
 #[serde_as]
 #[derive(serde::Deserialize, Debug, Clone)]
@@ -78,9 +81,8 @@ pub enum MessageTemplate {
     },
 }
 
-impl Matches for MessageTemplate {
+impl Template for MessageTemplate {
     type Message = LiveEvent<'static>;
-    type Match = Match;
 
     /// Checks if the given message matches the template,
     /// and if it does,
@@ -109,11 +111,12 @@ impl Matches for MessageTemplate {
                 let note = message_template::matches_many(template.note, key.as_int() as u32)?;
                 let velocity =
                     message_template::matches_many(template.velocity, vel.as_int() as u32)?;
-                Some(Match::NoteOn {
-                    channel,
-                    note,
-                    velocity,
-                })
+
+                Some(Match::from_iter([
+                    ("channel".to_string(), channel),
+                    ("note".to_string(), note),
+                    ("velocity".to_string(), velocity),
+                ]))
             }
 
             MidiMessage::NoteOff { key, vel } => {
@@ -130,11 +133,12 @@ impl Matches for MessageTemplate {
                 let note = message_template::matches_many(template.note, key.as_int() as u32)?;
                 let velocity =
                     message_template::matches_many(template.velocity, vel.as_int() as u32)?;
-                Some(Match::NoteOff {
-                    channel,
-                    note,
-                    velocity,
-                })
+
+                Some(Match::from_iter([
+                    ("channel".to_string(), channel),
+                    ("note".to_string(), note),
+                    ("velocity".to_string(), velocity),
+                ]))
             }
 
             MidiMessage::Aftertouch { key, vel } => {
@@ -151,11 +155,12 @@ impl Matches for MessageTemplate {
                 let note = message_template::matches_many(template.note, key.as_int() as u32)?;
                 let pressure =
                     message_template::matches_many(template.pressure, vel.as_int() as u32)?;
-                Some(Match::PolyPressure {
-                    channel,
-                    note,
-                    pressure,
-                })
+
+                Some(Match::from_iter([
+                    ("channel".to_string(), channel),
+                    ("note".to_string(), note),
+                    ("pressure".to_string(), pressure),
+                ]))
             }
 
             MidiMessage::Controller { controller, value } => {
@@ -174,11 +179,12 @@ impl Matches for MessageTemplate {
                     controller.as_int() as u32,
                 )?;
                 let value = message_template::matches_many(template.value, value.as_int() as u32)?;
-                Some(Match::ControlChange {
-                    channel,
-                    controller,
-                    value,
-                })
+
+                Some(Match::from_iter([
+                    ("channel".to_string(), channel),
+                    ("controller".to_string(), controller),
+                    ("value".to_string(), value),
+                ]))
             }
 
             MidiMessage::ProgramChange { program } => {
@@ -188,7 +194,11 @@ impl Matches for MessageTemplate {
                     message_template::matches_many(template.channel, channel.as_int() as u32)?;
                 let program =
                     message_template::matches_many(template.program, program.as_int() as u32)?;
-                Some(Match::ProgramChange { channel, program })
+
+                Some(Match::from_iter([
+                    ("channel".to_string(), channel),
+                    ("program".to_string(), program),
+                ]))
             }
 
             MidiMessage::ChannelAftertouch { vel } => {
@@ -198,7 +208,11 @@ impl Matches for MessageTemplate {
                     message_template::matches_many(template.channel, channel.as_int() as u32)?;
                 let pressure =
                     message_template::matches_many(template.pressure, vel.as_int() as u32)?;
-                Some(Match::ChannelPressure { channel, pressure })
+
+                Some(Match::from_iter([
+                    ("channel".to_string(), channel),
+                    ("pressure".to_string(), pressure),
+                ]))
             }
 
             MidiMessage::PitchBend { bend } => {
@@ -206,36 +220,31 @@ impl Matches for MessageTemplate {
                 let channel =
                     message_template::matches_many(template.channel, channel.as_int() as u32)?;
                 let bend = message_template::matches_many(template.bend, bend.0.as_int() as u32)?;
-                Some(Match::PitchBend { channel, bend })
+
+                Some(Match::from_iter([
+                    ("channel".to_string(), channel),
+                    ("bend".to_string(), bend),
+                ]))
             }
         }
     }
 
     /// Given the qualities of a matched message,
     /// generates the appropriate output message.
-    fn generate(&self, matched: Match) -> Option<LiveEvent<'static>> {
-        match matched {
-            Match::NoteOn {
-                channel: (channel_ix, channel_match),
-                note: (note_ix, note_match),
-                velocity: (velocity_ix, velocity_match),
+    fn generate(&self, mut matched: Match) -> Option<LiveEvent<'static>> {
+        match self {
+            MessageTemplate::NoteOn {
+                channel,
+                note,
+                velocity,
             } => {
-                let template = match_ok!(
-                    self,
-                    MessageTemplate::NoteOn {
-                        channel,
-                        note,
-                        velocity
-                    }
-                )?;
+                let (channel_ix, channel_match) = matched.remove("channel")?;
+                let (note_ix, note_match) = matched.remove("note")?;
+                let (velocity_ix, velocity_match) = matched.remove("velocity")?;
 
-                let channel = template
-                    .channel
-                    .get(channel_ix as usize)?
-                    .generate(channel_match)?;
-                let key = template.note.get(note_ix as usize)?.generate(note_match)?;
-                let vel = template
-                    .velocity
+                let channel = channel.get(channel_ix as usize)?.generate(channel_match)?;
+                let key = note.get(note_ix as usize)?.generate(note_match)?;
+                let vel = velocity
                     .get(velocity_ix as usize)?
                     .generate(velocity_match)?;
 
@@ -248,27 +257,18 @@ impl Matches for MessageTemplate {
                 })
             }
 
-            Match::NoteOff {
-                channel: (channel_ix, channel_match),
-                note: (note_ix, note_match),
-                velocity: (velocity_ix, velocity_match),
+            MessageTemplate::NoteOff {
+                channel,
+                note,
+                velocity,
             } => {
-                let template = match_ok!(
-                    self,
-                    MessageTemplate::NoteOff {
-                        channel,
-                        note,
-                        velocity
-                    }
-                )?;
+                let (channel_ix, channel_match) = matched.remove("channel")?;
+                let (note_ix, note_match) = matched.remove("note")?;
+                let (velocity_ix, velocity_match) = matched.remove("velocity")?;
 
-                let channel = template
-                    .channel
-                    .get(channel_ix as usize)?
-                    .generate(channel_match)?;
-                let key = template.note.get(note_ix as usize)?.generate(note_match)?;
-                let vel = template
-                    .velocity
+                let channel = channel.get(channel_ix as usize)?.generate(channel_match)?;
+                let key = note.get(note_ix as usize)?.generate(note_match)?;
+                let vel = velocity
                     .get(velocity_ix as usize)?
                     .generate(velocity_match)?;
 
@@ -281,32 +281,20 @@ impl Matches for MessageTemplate {
                 })
             }
 
-            Match::ControlChange {
-                channel: (channel_ix, channel_match),
-                controller: (controller_ix, controller_match),
-                value: (value_ix, value_match),
+            MessageTemplate::ControlChange {
+                channel,
+                controller,
+                value,
             } => {
-                let template = match_ok!(
-                    self,
-                    MessageTemplate::ControlChange {
-                        channel,
-                        controller,
-                        value
-                    }
-                )?;
+                let (channel_ix, channel_match) = matched.remove("channel")?;
+                let (controller_ix, controller_match) = matched.remove("controller")?;
+                let (value_ix, value_match) = matched.remove("value")?;
 
-                let channel = template
-                    .channel
-                    .get(channel_ix as usize)?
-                    .generate(channel_match)?;
-                let controller = template
-                    .controller
+                let channel = channel.get(channel_ix as usize)?.generate(channel_match)?;
+                let controller = controller
                     .get(controller_ix as usize)?
                     .generate(controller_match)?;
-                let value = template
-                    .value
-                    .get(value_ix as usize)?
-                    .generate(value_match)?;
+                let value = value.get(value_ix as usize)?.generate(value_match)?;
 
                 Some(LiveEvent::Midi {
                     channel: (channel as u8).into(),
@@ -317,27 +305,18 @@ impl Matches for MessageTemplate {
                 })
             }
 
-            Match::PolyPressure {
-                channel: (channel_ix, channel_match),
-                note: (note_ix, note_match),
-                pressure: (pressure_ix, pressure_match),
+            MessageTemplate::PolyPressure {
+                channel,
+                note,
+                pressure,
             } => {
-                let template = match_ok!(
-                    self,
-                    MessageTemplate::PolyPressure {
-                        channel,
-                        note,
-                        pressure
-                    }
-                )?;
+                let (channel_ix, channel_match) = matched.remove("channel")?;
+                let (note_ix, note_match) = matched.remove("note")?;
+                let (pressure_ix, pressure_match) = matched.remove("pressure")?;
 
-                let channel = template
-                    .channel
-                    .get(channel_ix as usize)?
-                    .generate(channel_match)?;
-                let key = template.note.get(note_ix as usize)?.generate(note_match)?;
-                let vel = template
-                    .pressure
+                let channel = channel.get(channel_ix as usize)?.generate(channel_match)?;
+                let key = note.get(note_ix as usize)?.generate(note_match)?;
+                let vel = pressure
                     .get(pressure_ix as usize)?
                     .generate(pressure_match)?;
 
@@ -349,22 +328,12 @@ impl Matches for MessageTemplate {
                     },
                 })
             }
+            MessageTemplate::ProgramChange { channel, program } => {
+                let (channel_ix, channel_match) = matched.remove("channel")?;
+                let (program_ix, program_match) = matched.remove("program")?;
 
-            Match::ProgramChange {
-                channel: (channel_ix, channel_match),
-                program: (program_ix, program_match),
-            } => {
-                let template =
-                    match_ok!(self, MessageTemplate::ProgramChange { channel, program })?;
-
-                let channel = template
-                    .channel
-                    .get(channel_ix as usize)?
-                    .generate(channel_match)?;
-                let program = template
-                    .program
-                    .get(program_ix as usize)?
-                    .generate(program_match)?;
+                let channel = channel.get(channel_ix as usize)?.generate(channel_match)?;
+                let program = program.get(program_ix as usize)?.generate(program_match)?;
 
                 Some(LiveEvent::Midi {
                     channel: (channel as u8).into(),
@@ -373,20 +342,12 @@ impl Matches for MessageTemplate {
                     },
                 })
             }
+            MessageTemplate::ChannelPressure { channel, pressure } => {
+                let (channel_ix, channel_match) = matched.remove("channel")?;
+                let (pressure_ix, pressure_match) = matched.remove("pressure")?;
 
-            Match::ChannelPressure {
-                channel: (channel_ix, channel_match),
-                pressure: (pressure_ix, pressure_match),
-            } => {
-                let template =
-                    match_ok!(self, MessageTemplate::ChannelPressure { channel, pressure })?;
-
-                let channel = template
-                    .channel
-                    .get(channel_ix as usize)?
-                    .generate(channel_match)?;
-                let vel = template
-                    .pressure
+                let channel = channel.get(channel_ix as usize)?.generate(channel_match)?;
+                let vel = pressure
                     .get(pressure_ix as usize)?
                     .generate(pressure_match)?;
 
@@ -397,18 +358,12 @@ impl Matches for MessageTemplate {
                     },
                 })
             }
+            MessageTemplate::PitchBend { channel, bend } => {
+                let (channel_ix, channel_match) = matched.remove("channel")?;
+                let (bend_ix, bend_match) = matched.remove("bend")?;
 
-            Match::PitchBend {
-                channel: (channel_ix, channel_match),
-                bend: (bend_ix, bend_match),
-            } => {
-                let template = match_ok!(self, MessageTemplate::PitchBend { channel, bend })?;
-
-                let channel = template
-                    .channel
-                    .get(channel_ix as usize)?
-                    .generate(channel_match)?;
-                let bend = template.bend.get(bend_ix as usize)?.generate(bend_match)?;
+                let channel = channel.get(channel_ix as usize)?.generate(channel_match)?;
+                let bend = bend.get(bend_ix as usize)?.generate(bend_match)?;
 
                 Some(LiveEvent::Midi {
                     channel: (channel as u8).into(),
@@ -419,44 +374,4 @@ impl Matches for MessageTemplate {
             }
         }
     }
-}
-
-/// Contains the information returned when a MIDI message is matched against a [`MessageTemplate`].
-/// Each field contains a tuple of
-/// the index of the matched value in the `MessageTemplate`'s `Vec`,
-/// and the [`NumberMatch`](message_template::NumberMatch) containing info about the matched value.
-#[derive(Debug, Clone)]
-pub enum Match {
-    NoteOn {
-        channel: (u32, message_template::NumberMatch),
-        note: (u32, message_template::NumberMatch),
-        velocity: (u32, message_template::NumberMatch),
-    },
-    NoteOff {
-        channel: (u32, message_template::NumberMatch),
-        note: (u32, message_template::NumberMatch),
-        velocity: (u32, message_template::NumberMatch),
-    },
-    ControlChange {
-        channel: (u32, message_template::NumberMatch),
-        controller: (u32, message_template::NumberMatch),
-        value: (u32, message_template::NumberMatch),
-    },
-    ProgramChange {
-        channel: (u32, message_template::NumberMatch),
-        program: (u32, message_template::NumberMatch),
-    },
-    PolyPressure {
-        channel: (u32, message_template::NumberMatch),
-        note: (u32, message_template::NumberMatch),
-        pressure: (u32, message_template::NumberMatch),
-    },
-    ChannelPressure {
-        channel: (u32, message_template::NumberMatch),
-        pressure: (u32, message_template::NumberMatch),
-    },
-    PitchBend {
-        channel: (u32, message_template::NumberMatch),
-        bend: (u32, message_template::NumberMatch),
-    },
 }

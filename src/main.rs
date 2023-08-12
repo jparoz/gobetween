@@ -4,7 +4,7 @@ mod message_template;
 mod midi;
 
 use device::DeviceInfo;
-use mapping::{Mapping, Target};
+use mapping::{Mapping, Target, Transformer};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -78,6 +78,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for (from_name, mappings) in config.mappings {
+        let from_device = devices
+            .get(&from_name)
+            .ok_or_else(|| mapping::Error::DeviceNotFound(from_name.clone()))?;
+
         for Mapping {
             message_template: from_template,
             target:
@@ -93,12 +97,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .ok_or_else(|| mapping::Error::DeviceNotFound(to_name.clone()))?
                 .tx
                 .clone();
+            let mut from_tx = from_device.subscribe();
 
-            let from_device = devices
-                .get_mut(&from_name)
-                .ok_or_else(|| mapping::Error::DeviceNotFound(from_name.clone()))?;
+            let transformer = Transformer {
+                input: from_template,
+                output: to_template,
+                field_map,
+            };
 
-            from_device.map_to(to_tx, from_template, to_template, field_map);
+            join_set.spawn(async move {
+                loop {
+                    // @XXX: don't unwrap
+                    let msg = from_tx.recv().await.unwrap();
+                    if let Some(new_msg) = transformer.transform(msg) {
+                        // @XXX: don't unwrap
+                        to_tx.send(new_msg).await.unwrap();
+                    }
+                }
+            });
         }
     }
 
@@ -121,10 +137,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(join_result) = join_set.join_next() => {
                 match join_result {
                     // Task joined properly, returning the happy-path message for that device
-                    Ok(Ok(msg)) => log::info!("{msg}"),
+                    Ok(Ok(msg)) => log::info!("Task joined with message: {msg}"),
 
                     // Task joined properly, returning an Err
-                    Ok(Err(err)) => log::error!("{err}"),
+                    Ok(Err(err)) => log::error!("Task joined with error: {err}"),
 
                     // Task didn't join properly
                     Err(join_err) => log::error!("Join error: {join_err}"),

@@ -19,6 +19,7 @@ impl Device<LiveEvent<'static>> {
         let (broadcast_tx, _broadcast_rx) = broadcast::channel(128); // @TestMe: is this the right capacity?
         let (tx, mut rx): (mpsc::Sender<LiveEvent<'_>>, mpsc::Receiver<_>) = mpsc::channel(4);
         let cloned_broadcast_tx = broadcast_tx.clone();
+        let cloned_name = name.to_string();
 
         join_set.spawn(async move {
             let mut socket = TcpStream::connect(&addr).await?;
@@ -26,8 +27,10 @@ impl Device<LiveEvent<'static>> {
             log::info!("Connected to device at address {addr}");
 
             let mut buf = BytesMut::new();
+            let mut out_buf = Vec::new();
             let broadcast_tx = cloned_broadcast_tx;
             let mut stream = MidiStream::new();
+            let name = cloned_name;
 
             loop {
                 tokio::select! {
@@ -48,9 +51,10 @@ impl Device<LiveEvent<'static>> {
                         buf.clear();
                     }
                     Some(live_event) = rx.recv() => {
-                        live_event.write_std(buf.as_mut())?;
-                        socket.write_all(&buf).await?;
-                        buf.clear();
+                        log::trace!("Sending a MIDI message to {name}: {live_event:?}");
+                        live_event.write(&mut out_buf).unwrap();
+                        socket.write_all(&out_buf).await.unwrap();
+                        out_buf.clear();
                     }
                     else => { break }
                 }

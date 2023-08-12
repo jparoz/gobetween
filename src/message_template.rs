@@ -2,26 +2,29 @@ use std::str::FromStr;
 
 use serde_with::{serde_as, DisplayFromStr};
 
-use crate::midi;
+use crate::{
+    mapping::{Match, NumberMatch},
+    midi,
+};
 
-#[derive(serde::Deserialize, Debug, Clone)]
-#[serde(untagged)]
-pub enum MessageTemplate {
-    Midi(midi::MessageTemplate),
-}
+// #[derive(serde::Deserialize, Debug, Clone)]
+// #[serde(untagged)]
+// pub enum MessageTemplate {
+//     Midi(midi::MessageTemplate),
+// }
+pub use midi::MessageTemplate;
 
-pub trait Matches {
+pub trait Template {
     type Message;
-    type Match;
 
     /// Checks if the given message matches the template,
     /// and if it does,
     /// returns a [`Match`](Self::Match) describing the qualities of the match.
-    fn matches(&self, msg: Self::Message) -> Option<Self::Match>;
+    fn matches(&self, msg: Self::Message) -> Option<Match>;
 
     /// Given the qualities of a matched message,
     /// generates the appropriate output message.
-    fn generate(&self, matched: Self::Match) -> Option<Self::Message>;
+    fn generate(&self, matched: Match) -> Option<Self::Message>;
 }
 
 /// An inclusive range between two numbers,
@@ -61,19 +64,6 @@ pub enum Number {
     Range(#[serde_as(as = "DisplayFromStr")] Range),
 }
 
-/// The information returned when part of a message is matched against a [`Number`].
-#[derive(Debug, Clone)]
-pub enum NumberMatch {
-    /// Contains the matched value.
-    Value(u32),
-
-    /// Contains a float between 0 and 1,
-    /// denoting the position in the range which was matched;
-    /// 0 meaning the beginning of the range,
-    /// and 1 meaning the end of the range.
-    Range(f64),
-}
-
 impl Number {
     pub fn matches(&self, n: u32) -> Option<NumberMatch> {
         match self {
@@ -83,7 +73,7 @@ impl Number {
                 let a = *a as f64;
                 let b = *b as f64;
                 let n = n as f64;
-                Some(NumberMatch::Range((b - a) / (n - a)))
+                Some(NumberMatch::Range((n - a) / (b - a)))
             }
             _ => None,
         }

@@ -4,9 +4,7 @@ use midly::live::LiveEvent;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinSet;
 
-use crate::mapping::{FieldMap, Mapped};
 use crate::midi;
-use crate::message_template::MessageTemplate;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct DeviceInfo {
@@ -65,23 +63,13 @@ pub struct Device<Message> {
     pub broadcast_tx: broadcast::Sender<Message>,
 
     /// All of the mappings where this device is the "from".
-    pub mapped: Vec<Mapped<Message>>,
+    // @Todo: this should hold JoinHandles from the spawned tokio threads (?? maybe not needed)
+    pub mapped: Vec<()>,
 }
 
 impl<Message> Device<Message> {
     pub fn subscribe(&self) -> broadcast::Receiver<Message> {
         self.broadcast_tx.subscribe()
-    }
-
-    pub fn map_to(
-        &mut self,
-        tx: mpsc::Sender<Message>,
-        trigger: MessageTemplate,
-        target: MessageTemplate,
-        field_map: FieldMap,
-    ) {
-        self.mapped
-            .push(Mapped::new(trigger, target, tx, field_map));
     }
 }
 

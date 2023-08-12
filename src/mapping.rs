@@ -1,50 +1,6 @@
 use std::collections::HashMap;
 
-use tokio::sync::mpsc;
-
-use crate::message_template::MessageTemplate;
-
-/// A mapping that has been realised,
-/// and will be applied to incoming messages.
-pub struct Mapped<Message> {
-    /// This closure is called on each input message;
-    /// if the closure produces a `Message`,
-    /// then the message is sent to `tx`.
-    pub f: Box<dyn Fn(Message) -> Option<Message>>,
-    pub tx: mpsc::Sender<Message>,
-}
-
-impl<Message> Mapped<Message> {
-    pub fn new(
-        trigger: MessageTemplate,
-        target: MessageTemplate,
-        tx: mpsc::Sender<Message>,
-        field_map: FieldMap,
-    ) -> Self {
-        Mapped {
-            f: Box::new(move |msg| {
-                // @Note @Fixme:
-                // The following can't really work,
-                // because currently we have a message_template::MessageTemplate,
-                // which contains something which implements Matches,
-                // but doesn't implement Matches itself.
-                // Likely we need to move away from holding a MessageTemplate,
-                // and instead pass around an impl Matches or something like that.
-                // It'll take some figuring out.
-
-                // @Todo:
-                // - use MessageTemplate::matches to find if the message should be mapped;
-                // - use field_map to convert the Match to the proper variant
-                // - use the new Match to generate a mapped output message.
-                let _trigger = &trigger;
-                let _target = &target;
-                let _field_map = &field_map;
-                todo!();
-            }),
-            tx,
-        }
-    }
-}
+use crate::message_template::{MessageTemplate, Template};
 
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct Mapping {
@@ -62,14 +18,57 @@ pub struct Target {
 
     #[serde(rename = "mapping")]
     #[serde(default)]
-    pub field_map: FieldMap,
+    pub field_map: HashMap<String, String>,
 
     #[serde(flatten)]
     pub message_template: MessageTemplate,
 }
 
-// @Todo: is this the right type? Represents a message field name such as note, controller, etc.
-pub type FieldMap = HashMap<String, String>;
+/// Takes an input message and transforms it into the desired output message,
+/// if the given input message matches the input template.
+pub struct Transformer<Fr, To> {
+    // @Todo: none of these should be pub,
+    // use a From impl or something similar instead
+    pub input: Fr,
+    pub output: To,
+    pub field_map: HashMap<String, String>,
+}
+
+impl<Fr, To> Transformer<Fr, To>
+where
+    Fr: Template,
+    To: Template,
+{
+    // @Todo: Should this return an Option?
+    //        Maybe we could guarantee that this will succeed...
+    pub fn transform(&self, in_msg: Fr::Message) -> Option<To::Message> {
+        self.input.matches(in_msg).and_then(|mat| {
+            let mapped_mat = mat
+                .into_iter()
+                .map(|(field, val)| {
+                    let mapped_field = self.field_map.get(&field).cloned().unwrap_or(field);
+                    (mapped_field, val)
+                })
+                .collect();
+            self.output.generate(mapped_mat)
+        })
+    }
+}
+
+pub type Match = HashMap<String, (u32, NumberMatch)>;
+
+/// The information returned when part of a message is matched against a [`Number`].
+#[derive(Debug, Clone)]
+pub enum NumberMatch {
+    /// Contains the matched value.
+    Value(u32),
+
+    /// Contains a float between 0 and 1,
+    /// denoting the position in the range which was matched;
+    /// 0 meaning the beginning of the range,
+    /// and 1 meaning the end of the range.
+    Range(f64),
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
