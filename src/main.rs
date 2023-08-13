@@ -1,11 +1,10 @@
 mod config;
 mod device;
-mod message_template;
+mod message;
 mod midi;
-mod transformer;
 
 use config::{Config, Mapping, Target};
-use transformer::Transformer;
+use message::Transformer;
 
 use std::collections::HashMap;
 use std::fs::File;

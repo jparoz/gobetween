@@ -2,11 +2,7 @@ use midly::{live::LiveEvent, MidiMessage};
 use serde_with::{serde_as, OneOrMany};
 use try_match::match_ok;
 
-use crate::{
-    config::Number,
-    message_template::{self, Template},
-    transformer::Match,
-};
+use crate::message::{self, Match, Number, Template};
 
 #[serde_as]
 #[derive(serde::Deserialize, Debug, Clone)]
@@ -107,11 +103,9 @@ impl Template for MessageTemplate {
                         velocity
                     }
                 )?;
-                let channel =
-                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
-                let note = message_template::matches_many(template.note, key.as_int() as u32)?;
-                let velocity =
-                    message_template::matches_many(template.velocity, vel.as_int() as u32)?;
+                let channel = message::matches_many(template.channel, channel.as_int() as u32)?;
+                let note = message::matches_many(template.note, key.as_int() as u32)?;
+                let velocity = message::matches_many(template.velocity, vel.as_int() as u32)?;
 
                 Some(Match::from_iter([
                     ("channel".to_string(), channel),
@@ -129,11 +123,9 @@ impl Template for MessageTemplate {
                         velocity
                     }
                 )?;
-                let channel =
-                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
-                let note = message_template::matches_many(template.note, key.as_int() as u32)?;
-                let velocity =
-                    message_template::matches_many(template.velocity, vel.as_int() as u32)?;
+                let channel = message::matches_many(template.channel, channel.as_int() as u32)?;
+                let note = message::matches_many(template.note, key.as_int() as u32)?;
+                let velocity = message::matches_many(template.velocity, vel.as_int() as u32)?;
 
                 Some(Match::from_iter([
                     ("channel".to_string(), channel),
@@ -151,11 +143,9 @@ impl Template for MessageTemplate {
                         pressure
                     }
                 )?;
-                let channel =
-                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
-                let note = message_template::matches_many(template.note, key.as_int() as u32)?;
-                let pressure =
-                    message_template::matches_many(template.pressure, vel.as_int() as u32)?;
+                let channel = message::matches_many(template.channel, channel.as_int() as u32)?;
+                let note = message::matches_many(template.note, key.as_int() as u32)?;
+                let pressure = message::matches_many(template.pressure, vel.as_int() as u32)?;
 
                 Some(Match::from_iter([
                     ("channel".to_string(), channel),
@@ -173,13 +163,10 @@ impl Template for MessageTemplate {
                         value
                     }
                 )?;
-                let channel =
-                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
-                let controller = message_template::matches_many(
-                    template.controller,
-                    controller.as_int() as u32,
-                )?;
-                let value = message_template::matches_many(template.value, value.as_int() as u32)?;
+                let channel = message::matches_many(template.channel, channel.as_int() as u32)?;
+                let controller =
+                    message::matches_many(template.controller, controller.as_int() as u32)?;
+                let value = message::matches_many(template.value, value.as_int() as u32)?;
 
                 Some(Match::from_iter([
                     ("channel".to_string(), channel),
@@ -191,10 +178,8 @@ impl Template for MessageTemplate {
             MidiMessage::ProgramChange { program } => {
                 let template =
                     match_ok!(self, MessageTemplate::ProgramChange { channel, program })?;
-                let channel =
-                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
-                let program =
-                    message_template::matches_many(template.program, program.as_int() as u32)?;
+                let channel = message::matches_many(template.channel, channel.as_int() as u32)?;
+                let program = message::matches_many(template.program, program.as_int() as u32)?;
 
                 Some(Match::from_iter([
                     ("channel".to_string(), channel),
@@ -205,10 +190,8 @@ impl Template for MessageTemplate {
             MidiMessage::ChannelAftertouch { vel } => {
                 let template =
                     match_ok!(self, MessageTemplate::ChannelPressure { channel, pressure })?;
-                let channel =
-                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
-                let pressure =
-                    message_template::matches_many(template.pressure, vel.as_int() as u32)?;
+                let channel = message::matches_many(template.channel, channel.as_int() as u32)?;
+                let pressure = message::matches_many(template.pressure, vel.as_int() as u32)?;
 
                 Some(Match::from_iter([
                     ("channel".to_string(), channel),
@@ -218,9 +201,8 @@ impl Template for MessageTemplate {
 
             MidiMessage::PitchBend { bend } => {
                 let template = match_ok!(self, MessageTemplate::PitchBend { channel, bend })?;
-                let channel =
-                    message_template::matches_many(template.channel, channel.as_int() as u32)?;
-                let bend = message_template::matches_many(template.bend, bend.0.as_int() as u32)?;
+                let channel = message::matches_many(template.channel, channel.as_int() as u32)?;
+                let bend = message::matches_many(template.bend, bend.0.as_int() as u32)?;
 
                 Some(Match::from_iter([
                     ("channel".to_string(), channel),
