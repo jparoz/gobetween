@@ -1,5 +1,6 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, fmt, str::FromStr};
 
+use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
 pub trait Template {
@@ -47,7 +48,7 @@ where
 /// Represents a specification for a number or range of numbers,
 /// e.g. the velocity value of a MIDI note on message.
 #[serde_as]
-#[derive(serde::Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(untagged)]
 pub enum Number {
     #[default]
@@ -58,7 +59,7 @@ pub enum Number {
 
 /// An inclusive range between two numbers,
 /// parsed from e.g. `3-10`.
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Range(pub u32, pub u32);
 
 impl FromStr for Range {
@@ -78,6 +79,12 @@ impl FromStr for Range {
         } else {
             Err("Too many `-`s")
         }
+    }
+}
+
+impl fmt::Display for Range {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} - {}", self.0, self.1)
     }
 }
 

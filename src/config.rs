@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-#[derive(serde::Deserialize, Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub devices: Vec<DeviceInfo>,
     pub mappings: HashMap<String, Vec<Mapping>>,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DeviceInfo {
     /// The name of the device. Can be anything.
     pub name: String,
@@ -15,7 +17,7 @@ pub struct DeviceInfo {
     pub connection_info: ConnectionInfo,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ConnectionInfo {
     /// MIDI over TCP connection information.
@@ -35,14 +37,14 @@ pub enum ConnectionInfo {
     },
 }
 
-// #[derive(serde::Deserialize, Debug, Clone)]
+// #[derive(Serialize, Deserialize, Debug, Clone)]
 // #[serde(untagged)]
 // pub enum MessageTemplate {
 //     Midi(midi::MessageTemplate),
 // }
 pub use crate::midi::MessageTemplate;
 
-#[derive(serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Mapping {
     #[serde(rename = "from")]
     pub message_template: MessageTemplate,
@@ -51,7 +53,7 @@ pub struct Mapping {
     pub target: Target,
 }
 
-#[derive(serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Target {
     #[serde(rename = "target")]
     pub name: String,

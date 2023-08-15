@@ -1,11 +1,12 @@
 use midly::{live::LiveEvent, MidiMessage};
+use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 use try_match::match_ok;
 
 use crate::message::{self, Match, Number, Template};
 
 #[serde_as]
-#[derive(serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum MessageTemplate {
     NoteOn {

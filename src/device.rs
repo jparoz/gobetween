@@ -1,8 +1,10 @@
 use std::io;
 
 use midly::live::LiveEvent;
-use tokio::sync::{broadcast, mpsc};
-use tokio::task::JoinSet;
+use tokio::{
+    sync::{broadcast, mpsc},
+    task::JoinSet,
+};
 
 use crate::{
     config::{ConnectionInfo, DeviceInfo},
@@ -10,6 +12,7 @@ use crate::{
 };
 
 impl DeviceInfo {
+    // @Todo @Cleanup: this shouldn't have LiveEvent in its return type
     pub fn connect(
         &self,
         join_set: &mut JoinSet<Result<String, Error>>,
@@ -29,16 +32,12 @@ pub struct Device<Message> {
     // @Todo: This could probably be a reference into the originating DeviceInfo
     pub name: String,
 
-    /// This is the sender to which we send MIDI devices for this device.
+    /// This is the sender to which we send messages for this device.
     pub tx: mpsc::Sender<Message>,
 
     /// This is a clone of the sender moved to the main device callback.
-    /// Use [`Device::subscribe`] to receive MIDI messages from this device.
+    /// Use [`Device::subscribe`] to receive messages from this device.
     pub broadcast_tx: broadcast::Sender<Message>,
-
-    /// All of the mappings where this device is the "from".
-    // @Todo: this should hold JoinHandles from the spawned tokio threads (?? maybe not needed)
-    pub mapped: Vec<()>,
 }
 
 impl<Message> Device<Message> {

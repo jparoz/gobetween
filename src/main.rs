@@ -6,10 +6,7 @@ mod midi;
 use config::{Config, Mapping, Target};
 use message::Transformer;
 
-use std::collections::HashMap;
-use std::fs::File;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{collections::HashMap, fs::File, path::PathBuf, str::FromStr};
 
 use clap::{builder::TypedValueParser as _, Parser};
 use tokio::task::JoinSet;

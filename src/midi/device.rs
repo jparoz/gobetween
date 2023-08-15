@@ -2,10 +2,12 @@ use bytes::BytesMut;
 use futures::FutureExt;
 use midir::{MidiInput, MidiOutput};
 use midly::{live::LiveEvent, stream::MidiStream};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
-use tokio::sync::{broadcast, mpsc};
-use tokio::task::JoinSet;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+    sync::{broadcast, mpsc},
+    task::JoinSet,
+};
 
 use crate::device::{self, Device};
 
@@ -26,11 +28,12 @@ impl Device<LiveEvent<'static>> {
 
             log::info!("Connected to device at address {addr}");
 
+            let broadcast_tx = cloned_broadcast_tx;
+            let name = cloned_name;
+
             let mut buf = BytesMut::new();
             let mut out_buf = Vec::new();
-            let broadcast_tx = cloned_broadcast_tx;
             let mut stream = MidiStream::new();
-            let name = cloned_name;
 
             loop {
                 tokio::select! {
@@ -52,8 +55,8 @@ impl Device<LiveEvent<'static>> {
                     }
                     Some(live_event) = rx.recv() => {
                         log::trace!("Sending a MIDI message to {name}: {live_event:?}");
-                        live_event.write(&mut out_buf).unwrap();
-                        socket.write_all(&out_buf).await.unwrap();
+                        live_event.write_std(&mut out_buf)?;
+                        socket.write_all(&out_buf).await?;
                         out_buf.clear();
                     }
                     else => { break }
@@ -67,7 +70,6 @@ impl Device<LiveEvent<'static>> {
             name: name.to_string(),
             broadcast_tx,
             tx,
-            mapped: Vec::new(),
         })
     }
 
@@ -161,7 +163,6 @@ impl Device<LiveEvent<'static>> {
             name: orig_name.to_string(),
             broadcast_tx,
             tx,
-            mapped: Vec::new(),
         })
     }
 }
